@@ -1,6 +1,6 @@
-# ODBC Configuration for Rocketgraph Mission-Control
+# ODBC Configuration for Rocketgraph Mission Control
 
-This document provides detailed instructions on how to configure ODBC (Open Database Connectivity) support for the Rocketgraph Mission-Control application.
+This document provides detailed instructions on how to configure ODBC (Open Database Connectivity) support for Rocketgraph Mission Control application.
 ODBC support enables the desktop to interact with various database systems via ODBC drivers.
 
 ## Preparing ODBC Configuration Files
@@ -64,7 +64,7 @@ Follow these steps to prepare and configure the files:
 
 To verify that ODBC is set up correctly:
 
-- Start the Rocketgraph Mission-Control.
+- Start Rocketgraph Mission Control.
 - Add a connection in the Profile tab to the database using the DSNs or driver specified in `odbc.ini` or `odbcinst.ini`.
 - An example for MariaDB would be: `Driver={MariaDB};Server=127.0.0.1;Port=3306;Database=test;Uid=test;Pwd=foo;`
 - In the Upload tab, perform a test query to ensure the connection is successfully established.

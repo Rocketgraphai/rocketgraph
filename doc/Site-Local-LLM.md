@@ -2,9 +2,9 @@
 
 This guide provides instructions for system administrators to configure site-local Large Language Models (LLMs) for your application.  The two categories of information you will need for each LLM are API details and any authentication that may be required for each user.
 
-## How the Rocketgraph Mission-Control calls an LLM
+## How Rocketgraph Mission Control calls an LLM
 
-There is a Python dictionary called `LLM_CONFIG` that is used by the Rocketgraph Mission-Control (MC) to produce the choices available for the LLM selection box.
+There is a Python dictionary called `LLM_CONFIG` that is used by Rocketgraph Mission Control (MC) to produce the choices available for the LLM selection box.
 Each dictionary entry contains:
 
   - **key**:  used as the display name of the LLM throughout the MC.
@@ -207,7 +207,7 @@ LLM_CONFIG_local_delete = [
 # }
 ```
 
-## Step 5:  Restart Rocketgraph Mission-Control with site-local configuration
+## Step 5:  Restart Rocketgraph Mission Control with site-local configuration
 
 A convenient way to do this configuration and have it enabled every time the app is restarted, place the `site_local_config.py` file in the same directory as your `docker-compose.yml` file.  Then add this line to the `docker-compose.yml` file in the “volumes” section of the “backend” service:
 
@@ -223,4 +223,4 @@ $ docker compose down
 $ docker compose up -d
 ```
 
-You can confirm that the site-local configuration took effect by going to the user Settings, the data explorer, or the schema explorer of the Rocketgraph Mission-Control and click on the LLM pull-down menu.  If authentication values are required for your site-local LLM, then you will need to enter those for yourself in the user Settings, and all your users will need to do that for their login accounts as well.
+You can confirm that the site-local configuration took effect by going to the user Settings, the data explorer, or the schema explorer of Rocketgraph Mission Control and click on the LLM pull-down menu.  If authentication values are required for your site-local LLM, then you will need to enter those for yourself in the user Settings, and all your users will need to do that for their login accounts as well.
