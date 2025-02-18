@@ -190,7 +190,7 @@ def call_onprem_llm(llm_config: dict, llm_credentials: dict = {},
 LLM_CONFIG_local_add = {
     'OnPremLLM': {
         'fields': [],
-        'model': 'Trovares',
+        'model': 'Rocketgraph',
         'callback': 'call_onprem_llm',
     },
 }

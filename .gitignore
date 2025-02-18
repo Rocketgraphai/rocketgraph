@@ -1,0 +1,37 @@
+# Build and compilation artifacts
+target/
+build/
+dist/
+coverage/
+
+# IDE and editor files
+.idea/
+.vscode/
+.temp/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Logs and temporary files
+logs/
+tmp/
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Python specific
+__pycache__/
+.pytest_cache/
+.coverage
+
+# Docker
+.dockerignore
+
+# Git specific
+.gitattributes
