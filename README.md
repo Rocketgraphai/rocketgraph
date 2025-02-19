@@ -135,22 +135,22 @@ The configurable environment variables are:
 |MC_VERSION              | |release version to pull/run, default is "latest"|
 |MC_PORT                 | |alternative port for the http web server|
 |MC_SSL_PORT             | |alternative port for the https web server|
+|MC_DEFAULT_XGT_HOST     | |default login host for Mission Control|
+|MC_DEFAULT_XGT_PORT     | |default login port for Mission Control|
+|MC_ODBC_PATH            | |path to ODBC drivers for the connector|
+|MC_MONGO_URI            | |location of the database used by Mission Control|
+|MC_MONGODB_IMAGE        | |used to specify the mongodb image for Power10 installs|
 |MC_SSL_PUBLIC_CERT      |Y|path to certificate on host to setup an https web server|
 |MC_SSL_PRIVATE_KEY      |Y|path to private key on host to setup an https web server|
 |MC_SSL_CERT_CHAIN       |Y|path to certificate chain used by the https web server to validate client certificates for mTLS|
 |MC_SSL_PROXY_PUBLIC_CERT|Y|path to certificate on host to use as a proxy connection to the xGT server|
 |MC_SSL_PROXY_PRIVATE_KEY|Y|path to private key on host to use as a proxy connection to the xGT server|
-|MC_MONGO_URI            | |location of the database used by Mission Control|
-|MC_DEFAULT_XGT_HOST     | |default login host for Mission Control|
-|MC_DEFAULT_XGT_PORT     | |default login port for Mission Control|
-|MC_ODBC_PATH            | |path to ODBC drivers for the connector|
-|MC_MONGODB_IMAGE        | |used to specify the mongodb image for Power10 installs|
 |XGT_VERSION             | |release version to pull/run, default is "latest"|
 |XGT_LICENSE_FILE        |Y|path to xGT license file|
-|XGT_SSL_SERVER_CERT     |Y|path to chain file on host for the xGT server’s certificate|
-|XGT_SERVER_CN           | |common name on the xGT server’s certificate|
 |XGT_DATA_PATH           |Y|path to the data directory on host for the xGT server|
 |XGT_AUTH_TYPES          | |sets xGT server authentication types available in Mission Control|
+|XGT_SSL_SERVER_CERT     |Y|path to chain file on host for the xGT server’s certificate|
+|XGT_SERVER_CN           | |common name on the xGT server’s certificate|
 
 The variables that are volume mapped map point to a file or directory on the host that gets mapped to an expected location in the containers.
 
