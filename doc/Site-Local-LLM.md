@@ -207,6 +207,14 @@ LLM_CONFIG_local_delete = [
 # }
 ```
 
+To pull a copy of this template from a docker container:
+
+```bash
+docker create --name temp_container trovares/desktop_backend:latest
+docker cp temp_container:/app/site_config.py site_local_config.py
+docker rm temp_container
+```
+
 ## Step 5:  Restart Rocketgraph Mission Control with site-local configuration
 
 A convenient way to do this configuration and have it enabled every time the app is restarted, place the `site_local_config.py` file in the same directory as your `docker-compose.yml` file.  Then add this line to the `docker-compose.yml` file in the “volumes” section of the “backend” service:
