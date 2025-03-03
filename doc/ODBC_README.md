@@ -1,12 +1,12 @@
 # ODBC Configuration for Rocketgraph Mission Control
 
 This document provides detailed instructions on how to configure ODBC (Open Database Connectivity) support for Rocketgraph Mission Control application.
-ODBC support enables the desktop to interact with various database systems via ODBC drivers.
+ODBC support enables Mission Control to interact with various database systems via ODBC drivers.
 
 ## Preparing ODBC Configuration Files
 
 To enable ODBC support, the `odbc.ini` and `odbcinst.ini` files need to be set up along with the necessary ODBC drivers.
-The ODBC files and drivers need to be placed in a directory which will be volume mounted to one of the desktop Docker containers.
+The ODBC files and drivers need to be placed in a directory which will be volume mounted to one of the Mission Control Docker containers.
 
 As an example this document describes setting up MariaDB.  Other databases are set up similarly.  MariaDB has an ODBC driver called `libmaodbc.so`.
 This driver requires a library file called `libmariadb.so.3` to work.
@@ -111,4 +111,4 @@ If the driver still isn't being found by the ODBC Manager, it may mean that all 
     ```
     Notice, the missing library. In this case all the needed libraries weren't put in the `./odbc` directory.
 
-For further details and support, refer back to the main [README](../README.md) or contact [support@trovares.com](mailto:support@trovares.com).
+For further details and support, refer back to the main [README](../README.md) or contact [support@rocketgraph.com](mailto:support@rocketgraph.com).

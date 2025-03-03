@@ -6,7 +6,7 @@ Rocketgraph Mission Control is an innovative web application designed to revolut
 
 For organizations managing large and intricate datasets, particularly in critical sectors like defense cybersecurity, finance, and healthcare, Rocketgraph Mission Control stands as a pivotal tool. It delivers high-performance analytics and insightful visual representations, enabling users to uncover hidden patterns, relationships, and trends in data. This level of insight is crucial for decision-making and strategic planning in high-stakes environments. The application's capacity to handle massive datasets efficiently makes it an invaluable asset for organizations seeking to transform their data into actionable intelligence, thereby fostering informed decisions and enhancing operational effectiveness.
 
-Rocketgraph Mission Control is a web application for driving property graph workloads in the [Rocketgraph xGT server](https://docs.trovares.com).
+Rocketgraph Mission Control is a web application for driving property graph workloads in the [Rocketgraph xGT server](https://docs.rocketgraph.com).
 
 ## Quick Installation
 
@@ -44,11 +44,11 @@ Rocketgraph Mission Control can be run using either Docker Desktop or Docker Eng
 
 ### Configuration for the xGT Server
 
-The frontend, backend, and database containers must be run on the same host.  However, the xGT server can be run in the following ways:
+The Mission Control frontend, backend, and database containers must be run on the same host.  However, the xGT server can be run in the following ways:
  - In a Docker container as part of the Compose project.
- - In an isolated Docker container (separate from the Compose project) on the same host as the desktop.
- - Installed from an RPM on the same host as the desktop.
- - On a different host than the desktop, either in a Docker container or installed from an RPM.
+ - In an isolated Docker container (separate from the Compose project) on the same host as Mission Control.
+ - Installed from an RPM on the same host as Mission Control.
+ - On a different host than Mission Control, either in a Docker container or installed from an RPM.
 
 #### xGT as Part of the Compose Project
 
@@ -62,7 +62,7 @@ Here is an example of starting the xGT server in an isolated container:
 ```bash
 docker run --name xgt -d -p 4367:4367 -v /host/data/dir:/data -v /host/conf/dir:/conf -v /host/log/dir:/var/log/xgtd -v /host/ssl/dir:/ssl trovares/xgt
 ```
-This command exposes port 4367 to the host.  The xGT server listens on port 4367.  Exposing this port is required for Rocketgraph Mission Control to communicate with the isolated container.  The command also volume maps a data directory, a config directory, a log directory, and a directory containing ssl certs for encrypting traffic to the xGT server.  Change the command to map only the directories you need and point to the correct host directories.  See the [documentation for running xGT in a Docker container](https://docs.trovares.com/using_docker_image/index.html) for more details.
+This command exposes port 4367 to the host.  The xGT server listens on port 4367.  Exposing this port is required for Rocketgraph Mission Control to communicate with the isolated container.  The command also volume maps a data directory, a config directory, a log directory, and a directory containing ssl certs for encrypting traffic to the xGT server.  Change the command to map only the directories you need and point to the correct host directories.  See the [documentation for running xGT in a Docker container](https://docs.rocketgraph.com/using_docker_image/index.html) for more details.
 
 Comment out or delete the xgt section in the docker-compose.yml file.
 
@@ -73,11 +73,11 @@ Another option for the login hostname is to use either `localhost` or `host.dock
     extra_hosts:
       - "host.docker.internal:host-gateway"
 ```
-Docker Desktop automatically provides the translation of "host.docker.internal" to the gateway IP of the default bridge network.  These lines add the translation in Docker Engine.  The desktop translates "localhost" to "host.docker.internal" to provide a shorter more commonly understood hostname.
+Docker Desktop automatically provides the translation of "host.docker.internal" to the gateway IP of the default bridge network.  These lines add the translation in Docker Engine.  Mission Control translates "localhost" to "host.docker.internal" to provide a shorter more commonly understood hostname.
 
 #### xGT Installed from an RPM on the Mission Control Host
 
-The xGT server configuration variable `system.hostname` must be set appropriately when connecting Rocketgraph Mission Control to an RPM installed xGT.  See [the xGT configuration documentation](https://docs.trovares.com/sysadmin_guide/configuration.html) for more details.  One option is to set "system.hostname" to the host's external IP.  If access on 127.0.0.1 is desired in addition to access via the host's external IP, set "system.hostname" to "0.0.0.0".
+The xGT server configuration variable `system.hostname` must be set appropriately when connecting Rocketgraph Mission Control to an RPM installed xGT.  See [the xGT configuration documentation](https://docs.rocketgraph.com/sysadmin_guide/configuration.html) for more details.  One option is to set "system.hostname" to the host's external IP.  If access on 127.0.0.1 is desired in addition to access via the host's external IP, set "system.hostname" to "0.0.0.0".
 
 To setup access via 127.0.0.1 but no external access, the setup is slightly more complicated.  If using Docker Desktop to run Rocketgraph Mission Control, use the default value of "localhost" for "system.hostname".  If using Docker Engine to run Rocketgraph Mission Control, "system.hostname" must be set to the gateway IP of Docker's default bridge network.  The gateway IP is almost always "172.17.0.1".  To verify the gateway IP, do
 ```bash
@@ -107,7 +107,7 @@ If the xGT server is configured for access via 127.0.0.1, another option for the
     extra_hosts:
       - "host.docker.internal:host-gateway"
 ```
-Docker Desktop automatically provides the translation of "host.docker.internal" to the gateway IP of the default bridge network.  These lines add the translation in Docker Engine.  The desktop translates "localhost" to "host.docker.internal" to provide a shorter more commonly understood hostname.
+Docker Desktop automatically provides the translation of "host.docker.internal" to the gateway IP of the default bridge network.  These lines add the translation in Docker Engine.  Mission Control translates "localhost" to "host.docker.internal" to provide a shorter more commonly understood hostname.
 
 #### xGT on a Different Host
 
@@ -191,7 +191,7 @@ The variables that are volume mapped map point to a file or directory on the hos
     XGT_DATA_PATH=/path/to/data/dir
     ```
 
- 1. (Optional) Setup using SSL to connect from Mission Control to the xGT server.  The xGT server must also be configured to use SSL.  (See https://docs.trovares.com/sysadmin_guide/configuration.html.)  Set the environment variables XGT_SSL_SERVER_CERT and XGT_SERVER_CN.  For example:
+ 1. (Optional) Setup using SSL to connect from Mission Control to the xGT server.  The xGT server must also be configured to use SSL.  (See https://docs.rocketgraph.com/sysadmin_guide/configuration.html.)  Set the environment variables XGT_SSL_SERVER_CERT and XGT_SERVER_CN.  For example:
     ```dotenv
     XGT_SSL_SERVER_CERT=/directory/to/ssl/ca-chain.cert.pem
     XGT_SERVER_CN=’Rocketgraph'
@@ -246,7 +246,7 @@ Refer to these detailed [instructions](doc/Site-Local-LLM.md).
 
 ## License
 
-By downloading, installing or using any of these images you agree to the [license agreement](https://docs.trovares.com/EULA/xGT_License_for_Containers.pdf) for this software.
+By downloading, installing or using any of these images you agree to the [license agreement](https://docs.rocketgraph.com/EULA/xGT_License_for_Containers.pdf) for this software.
 
 As with all Docker images, these likely also contain other software which may be under other licenses (such as Bash, etc from the base distribution, along with any direct or indirect dependencies of the primary software being contained).
 
