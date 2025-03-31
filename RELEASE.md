@@ -5,7 +5,7 @@
 ### New Features
 - Added a bookmark feature to the histories to save frequently used questions and queries.
 - Added a cancel button to the job status box on the data explorer page.
-- Added a help button with documentation and a couple of tours.
+- Added a help button with documentation and architecture diagrams.
 - Added launch notes for Mission Control and a link to the xGT launch notes.
 
 ### Changed
