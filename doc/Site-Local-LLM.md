@@ -157,7 +157,7 @@ This step is to create the `site_local_config.py` file for setting up all of a s
 This can be done in one Python file that includes both updates to the `LLM_CONFIG` and callback functions that coordinate the calls out to the LLMs.
 The content of the callback functions largely depend upon the site-local LLM APIs.
 
-There is a template inside the docker image for `trovares/desktop_backend`, or you can use the template shown here:
+There is a template inside the docker image for `rocketgraph/mission-control-backend`, or you can use the template shown here:
 
 ```python
 def call_onprem_llm(llm_config: dict, llm_credentials: dict = {},
@@ -210,7 +210,7 @@ LLM_CONFIG_local_delete = [
 To pull a copy of this template from a docker container:
 
 ```bash
-docker create --name temp_container trovares/desktop_backend:latest
+docker create --name temp_container rocketgraph/mission-control-backend:latest
 docker cp temp_container:/app/site_config.py site_local_config.py
 docker rm temp_container
 ```

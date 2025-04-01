@@ -4,7 +4,7 @@ name: rocketgraph
 
 services:
   frontend:
-    image: trovares/desktop_frontend:${MC_VERSION:-latest}
+    image: docker.io/rocketgraph/mission-control-frontend:${MC_VERSION:-latest}
     ports:
       - "${MC_PORT:-80}:80"
       - "${MC_SSL_PORT:-443}:443"
@@ -16,7 +16,7 @@ services:
       - ${MC_SSL_CERT_CHAIN:-/dev/null}:/etc/ssl/certs/ca-chain.pem:ro
 
   backend:
-    image: trovares/desktop_backend:${MC_VERSION:-latest}
+    image: docker.io/rocketgraph/mission-control-backend:${MC_VERSION:-latest}
     environment:
       MC_MONGO_URI: mongodb://mongodb:27017
       MC_DEFAULT_XGT_HOST:
@@ -39,7 +39,7 @@ services:
       - ${MC_ODBC_PATH:-/dev/null}:/odbc
 
   xgt:
-    image: trovares/xgt:${XGT_VERSION:-latest}
+    image: docker.io/rocketgraph/xgt:${XGT_VERSION:-latest}
     ports:
       - "4367:4367"
     volumes:

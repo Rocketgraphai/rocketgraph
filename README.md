@@ -35,9 +35,9 @@ Perform these steps to install and run Rocketgraph Mission Control and Rocketgra
 ## Installation
 
 Rocketgraph Mission Control uses Docker Compose with these Docker images:
- - [trovares/xgt](https://hub.docker.com/r/trovares/xgt)
- - [trovares/desktop_frontend](https://hub.docker.com/r/trovares/desktop_frontend)
- - [trovares/desktop_backend](https://hub.docker.com/r/trovares/desktop_backend)
+ - [rocketgraph/xgt](https://hub.docker.com/r/rocketgraph/xgt)
+ - [rocketgraph/mission-control-frontend](https://hub.docker.com/r/rocketgraph/mission-control-frontend)
+ - [rocketgraph/mission-control-backend](https://hub.docker.com/r/rocketgraph/mission-control-backend)
  - [mongo](https://hub.docker.com/_/mongo)
 
 Rocketgraph Mission Control can be run using either Docker Desktop or Docker Engine only.  Further references to Docker Engine in the Installation section refer to a Docker Engine install without Docker Desktop.
@@ -60,7 +60,7 @@ The hostname to use when logging into Rocketgraph Mission Control is either `xgt
 
 Here is an example of starting the xGT server in an isolated container:
 ```bash
-docker run --name xgt -d -p 4367:4367 -v /host/data/dir:/data -v /host/conf/dir:/conf -v /host/log/dir:/var/log/xgtd -v /host/ssl/dir:/ssl trovares/xgt
+docker run --name xgt -d -p 4367:4367 -v /host/data/dir:/data -v /host/conf/dir:/conf -v /host/log/dir:/var/log/xgtd -v /host/ssl/dir:/ssl rocketgraph/xgt
 ```
 This command exposes port 4367 to the host.  The xGT server listens on port 4367.  Exposing this port is required for Rocketgraph Mission Control to communicate with the isolated container.  The command also volume maps a data directory, a config directory, a log directory, and a directory containing ssl certs for encrypting traffic to the xGT server.  Change the command to map only the directories you need and point to the correct host directories.  See the [documentation for running xGT in a Docker container](https://docs.rocketgraph.com/using_docker_image/index.html) for more details.
 
@@ -163,17 +163,17 @@ The variables that are volume mapped map point to a file or directory on the hos
     1. Download the Docker images.
        ```bash
        docker pull mongo
-       docker pull trovares/xgt
-       docker pull trovares/desktop_frontend
-       docker pull trovares/desktop_backend
+       docker pull rocketgraph/xgt
+       docker pull rocketgraph/mission-control-frontend
+       docker pull rocketgraph/mission-control-backend
        ```
 
     1. Save the Docker images to file.  Make sure to use the `<image>:<tag>` format to specify the image for the save command.  Otherwise you might have to manually add tags when loading later.
        ```bash
        docker save -o mongo.tar mongo:latest
-       docker save -o xgt.tar trovares/xgt:latest
-       docker save -o desktop_frontend.tar trovares/desktop_frontend:latest
-       docker save -o desktop_backend.tar trovares/desktop_backend:latest
+       docker save -o xgt.tar rocketgraph/xgt:latest
+       docker save -o mission-control-frontend.tar rocketgraph/mission-control-frontend:latest
+       docker save -o mission-control-backend.tar rocketgraph/mission-control-backend:latest
        ```
 
     1. Copy the Docker image tar files to the machine they are to be installed on.
@@ -182,8 +182,8 @@ The variables that are volume mapped map point to a file or directory on the hos
        ```bash
        docker load -i mongo.tar
        docker load -i xgt.tar
-       docker load -i desktop_frontend.tar
-       docker load -i desktop_backend.tar
+       docker load -i mission-control-frontend.tar
+       docker load -i mission-control-backend.tar
        ```
 
  1. If running the xGT server as part of the Compose project, setup a data directory using the environment variable XGT_DATA_PATH.  The default is /tmp if XGT_DATA_PATH is not set.  For example:
