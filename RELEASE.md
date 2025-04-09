@@ -1,5 +1,17 @@
 # Launch Notes
 
+## 2.2.1 (4/9/2025)
+
+### Changed
+- Answer graph and dynamic visualization now stay on and update when the page or rows per page is updated in the results table.
+- Improved some descriptions to make it clear the answer graph and dynamic display on the data explorer page use displayed result data only.
+- Starting with 2.2.1, Mission Control can be compatible with older or newer versions of the xGT server.
+
+### Fixed
+- Fixed a bug where null edges or vertices sometimes showed up in a graph visualization.
+- Fixed a bug where the wrong query was sometimes put in the query box on the data explorer page when navigating from the jobs page by clicking on viewing the job data.
+
+
 ## 2.2.0 (3/31/2025)
 
 ### New Features
@@ -18,7 +30,7 @@
 - Improved error reporting from LLMs.
 - The chat feature is no longer experimental.
 - Improved the errors returned to the user when the LLM generates an invalid schema.
-- Removed Logs tab as it was basically a duplication of the Jobs tab.
+- Removed Logs page as it was basically a duplication of the Jobs page.
 
 ### Fixed
 - Fixed a bug where the wrong properties were sometimes displayed in the answer graph when multiple vertices or edges from the same frame were given in the RETURN statement.
