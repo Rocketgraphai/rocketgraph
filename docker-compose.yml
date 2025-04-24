@@ -41,9 +41,11 @@ services:
   xgt:
     image: docker.io/rocketgraph/xgt:${XGT_VERSION:-latest}
     ports:
-      - "4367:4367"
+      - "${XGT_PORT:-4367}:4367"
     volumes:
-      - ${XGT_DATA_PATH:-/tmp}:/data
+      - ${XGT_CONF_PATH:-/tmp/xgt/conf}:/conf
+      - ${XGT_DATA_PATH:-/tmp/xgt/data}:/data
+      - ${XGT_LOG_PATH:-/tmp/xgt/log}:/log
       - ${XGT_LICENSE_FILE:-/dev/null}:/license/xgtd.lic
     networks:
       - external-network

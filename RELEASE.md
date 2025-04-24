@@ -1,5 +1,22 @@
 # Launch Notes
 
+## 2.2.2 (4/23/2025)
+
+### New Features
+- Added warning popup to notify users of upcoming license expiration.
+- Added button to load demo data.
+
+### Changed
+- The answer graph now shows multiple edges between the same two nodes.
+- The answer graph can now visualize queries that use aliases of properties.
+- The number of rows for the job is now a column on the jobs page.
+- Added millisecond resolution to the reported query and job times.
+
+### Fixed
+- Fixed answer graph visualization to distinguish nodes by both frame type and key value to prevent incorrect merges across node types with overlapping keys.
+- Fixed CSV inference failure caused by unnormalized Windows line endings by standardizing line breaks before parsing.
+- Fixed a bug where the answer graph visualization could hang when the same label was used multiple times or when properties were aliased.
+
 ## 2.2.1 (4/9/2025)
 
 ### Changed
