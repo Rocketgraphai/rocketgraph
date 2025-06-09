@@ -14,20 +14,24 @@ services:
       - ${MC_SSL_PUBLIC_CERT:-/dev/null}:/etc/ssl/certs/td.pem:ro
       - ${MC_SSL_PRIVATE_KEY:-/dev/null}:/etc/ssl/private/td.pem:ro
       - ${MC_SSL_CERT_CHAIN:-/dev/null}:/etc/ssl/certs/ca-chain.pem:ro
+    depends_on:
+      - backend
+    restart: on-failure
 
   backend:
     image: docker.io/rocketgraph/mission-control-backend:${MC_VERSION:-latest}
     environment:
       MC_MONGO_URI: mongodb://mongodb:27017
-      MC_DEFAULT_XGT_HOST:
-      MC_DEFAULT_XGT_PORT:
-      MC_SESSION_TTL:
-      MC_SSL_PUBLIC_CERT:
-      MC_SSL_PRIVATE_KEY:
-      MC_SSL_PROXY_PUBLIC_CERT:
-      MC_SSL_PROXY_PRIVATE_KEY:
-      XGT_SERVER_CN:
-      XGT_AUTH_TYPES:
+      MC_DEFAULT_XGT_HOST: ${MC_DEFAULT_XGT_HOST:-}
+      MC_DEFAULT_XGT_PORT: ${MC_DEFAULT_XGT_PORT:-}
+      MC_SESSION_TTL: ${MC_SESSION_TTL:-}
+      MC_SSL_PUBLIC_CERT: ${MC_SSL_PUBLIC_CERT:-}
+      MC_SSL_PRIVATE_KEY: ${MC_SSL_PRIVATE_KEY:-}
+      MC_SSL_PROXY_PUBLIC_CERT: ${MC_SSL_PROXY_PUBLIC_CERT:-}
+      MC_SSL_PROXY_PRIVATE_KEY: ${MC_SSL_PROXY_PRIVATE_KEY:-}
+      XGT_SERVER_CN: ${XGT_SERVER_CN:-}
+      XGT_AUTH_TYPES: ${XGT_AUTH_TYPES:-}
+      LD_LIBRARY_PATH: "/odbc:${MC_ODBC_LIBRARY_PATH-}"
     networks:
       - database-network
       - external-network
@@ -37,15 +41,18 @@ services:
       - ${MC_SSL_PROXY_PRIVATE_KEY:-/dev/null}:/etc/ssl/private/proxy-client-key.pem:ro
       - mongodb-data:/app/data
       - ${MC_ODBC_PATH:-/dev/null}:/odbc
+      - ${MC_IBM_IACCESS_PATH:-/dev/null}:/opt/ibm/iaccess
+    depends_on:
+      - mongodb
 
   xgt:
     image: docker.io/rocketgraph/xgt:${XGT_VERSION:-latest}
     ports:
       - "${XGT_PORT:-4367}:4367"
     volumes:
-      - ${XGT_CONF_PATH:-/tmp/xgt/conf}:/conf
-      - ${XGT_DATA_PATH:-/tmp/xgt/data}:/data
-      - ${XGT_LOG_PATH:-/tmp/xgt/log}:/log
+      - ${XGT_CONF_PATH:-~/.xgt/conf}:/conf
+      - ${XGT_DATA_PATH:-~/.xgt/data}:/data
+      - ${XGT_LOG_PATH:-~/.xgt/log}:/log
       - ${XGT_LICENSE_FILE:-/dev/null}:/license/xgtd.lic
     networks:
       - external-network

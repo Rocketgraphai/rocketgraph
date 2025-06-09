@@ -1,5 +1,25 @@
 # Launch Notes
 
+## 2.3.0 (6/9/2025)
+
+### New Features
+- Added support for newer ChatGPT and Anthropic LLM models.
+- Added tour capability along with login and dashboard tours.
+- Added support for editing and renaming bookmarks and folders, updating bookmark content and folder assignments, creating custom folders, and reorganizing bookmarks via drag-and-drop.
+- Added netflow demo dataset.
+
+### Changed
+- Improved column type inferencing of CSV files.
+- Improved syntax highlighting of Cypher.
+- The Mission Control launch notes are now available even when logged out.
+- Changed the default host directories for configuration, data, and log files to be in the host user's directory to support multiple users on the same system.
+
+### Fixed
+- Fixed some bugs that occurred when entering LLM keys on the settings page.
+- Fixed bug where the columns from an LLM response weren't mapped correctly to the data columns when generating an SQL query.
+- Fixed bug where an ignored license expiration banner never came back.
+
+
 ## 2.2.2 (4/23/2025)
 
 ### New Features
