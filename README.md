@@ -21,8 +21,8 @@ Perform these steps to install and run Rocketgraph Mission Control and Rocketgra
 
  1. If installing on IBM Power Series, create a `.env` file in the same directory as the `docker-compose.yml` file containing this line:
 
-    ```bash
-    $ export MC_MONGODB_IMAGE=ibmcom/mongodb-ppc64le
+    ```env
+    MC_MONGODB_IMAGE=ibmcom/mongodb-ppc64le
     ```
 
  1. Start Rocketgraph Mission Control and Rocketgraph xGT:
@@ -223,7 +223,7 @@ The variables that are volume mapped map point to a file or directory on the hos
  1. (Optional) Setup using SSL to connect from Mission Control to the xGT server.  The xGT server must also be configured to use SSL.  (See the [xGT configuration documentation](https://docs.rocketgraph.com/sysadmin_guide/configuration.html).)  Set the environment variables XGT_SSL_SERVER_CERT and XGT_SERVER_CN.  For example:
     ```dotenv
     XGT_SSL_SERVER_CERT=/directory/to/ssl/ca-chain.cert.pem
-    XGT_SERVER_CN=’Rocketgraph'
+    XGT_SERVER_CN='Rocketgraph'
     ```
 
  1. (Optional) Setup certificates for connecting from the browser to Mission Control over https.  Set the environment variables MC_SSL_PUBLIC_CERT and MC_SSL_PRIVATE_KEY to the certificate and private key for the web server.  For example:
