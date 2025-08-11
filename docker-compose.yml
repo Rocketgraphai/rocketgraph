@@ -58,7 +58,7 @@ services:
       - external-network
 
   mongodb:
-    image: ${MC_MONGODB_IMAGE:-mongo:latest}
+    image: ${MC_MONGODB_IMAGE:-docker.io/library/mongo:latest}
     restart: always
     networks:
       - database-network
