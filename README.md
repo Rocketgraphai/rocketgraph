@@ -205,17 +205,17 @@ The variables that are volume mapped map point to a file or directory on the hos
        $ docker load --input mission-control-backend.tar
        ```
 
- 1. If running the xGT server as part of the Compose project, setup a data directory using the environment variable XGT_DATA_PATH.  The default is ~/.xgt/data if XGT_DATA_PATH is not set.  For example:
+ 1. If running the xGT server as part of the Compose project, setup a data directory using the environment variable XGT_DATA_PATH.  The default is ~/.rocketgraph/data if XGT_DATA_PATH is not set.  For example:
     ```dotenv
     XGT_DATA_PATH=/path/to/data/dir
     ```
 
- 1. (Optional) If running the xGT server as part of the Compose project, setup a configuration directory using the environment variable XGT_CONF_PATH.  The default is ~/.xgt/conf if XGT_CONF_PATH is not set.  For example:
+ 1. (Optional) If running the xGT server as part of the Compose project, setup a configuration directory using the environment variable XGT_CONF_PATH.  The default is ~/.rocketgraph/conf if XGT_CONF_PATH is not set.  For example:
     ```dotenv
     XGT_CONF_PATH=/path/to/conf/dir
     ```
 
- 1. (Optional) If running the xGT server as part of the Compose project, setup a log directory using the environment variable XGT_LOG_PATH.  The default is ~/.xgt/log if XGT_LOG_PATH is not set.  For example:
+ 1. (Optional) If running the xGT server as part of the Compose project, setup a log directory using the environment variable XGT_LOG_PATH.  The default is ~/.rocketgraph/log if XGT_LOG_PATH is not set.  For example:
     ```dotenv
     XGT_LOG_PATH=/path/to/log/dir
     ```
@@ -257,14 +257,16 @@ The variables that are volume mapped map point to a file or directory on the hos
 
 ## Database Connectivity
 
-Rocketgraph Mission Control supports loading data from a database.  Refer to the [ODBC documentation](doc/ODBC_README.md) to connect to a database.
+Rocketgraph Mission Control supports loading data from a database.  Refer to the [ODBC documentation](doc/ODBC_README.md) for connection instructions.
 
-The supported databases are:
+Rocketgraph comes preinstalled with PostgreSQL and MariaDB ODBC drivers.
+
+Additional databases can be connected by installing the appropriate ODBC driver, including:
  - MongoDB
  - Oracle
  - SAP: ASE and IQ
  - Snowflake
- - Generic ODBC: Databricks, DB2, MySQL, and MariaDB
+ - Generic ODBC: Databricks, DB2, MySQL
 
 ## Connect to a site-local LLM
 

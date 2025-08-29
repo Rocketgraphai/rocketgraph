@@ -1,6 +1,6 @@
 # docker-compose.yml
 
-name: rocketgraph
+name: ${COMPOSE_PROJECT_NAME:-rocketgraph}
 
 services:
   frontend:
@@ -11,9 +11,9 @@ services:
     networks:
       - external-network
     volumes:
-      - ${MC_SSL_PUBLIC_CERT:-/dev/null}:/etc/ssl/certs/td.pem:ro
-      - ${MC_SSL_PRIVATE_KEY:-/dev/null}:/etc/ssl/private/td.pem:ro
-      - ${MC_SSL_CERT_CHAIN:-/dev/null}:/etc/ssl/certs/ca-chain.pem:ro
+      - ${MC_SSL_PUBLIC_CERT:-~/.rocketgraph/.fallback_mount/certs/xgt-public.pem}:/etc/ssl/certs/td.pem:ro,Z
+      - ${MC_SSL_PRIVATE_KEY:-~/.rocketgraph/.fallback_mount/certs/xgt-private.pem}:/etc/ssl/private/td.pem:ro,Z
+      - ${MC_SSL_CERT_CHAIN:-~/.rocketgraph/.fallback_mount/certs/xgt-chain.pem}:/etc/ssl/certs/ca-chain.pem:ro,Z
     depends_on:
       - backend
     restart: on-failure
@@ -36,12 +36,12 @@ services:
       - database-network
       - external-network
     volumes:
-      - ${XGT_SSL_SERVER_CERT:-/dev/null}:/etc/ssl/certs/xgt-server.pem:ro
-      - ${MC_SSL_PROXY_PUBLIC_CERT:-/dev/null}:/etc/ssl/certs/proxy-client-cert.pem:ro
-      - ${MC_SSL_PROXY_PRIVATE_KEY:-/dev/null}:/etc/ssl/private/proxy-client-key.pem:ro
+      - ${XGT_SSL_SERVER_CERT:-~/.rocketgraph/.fallback_mount/certs/xgt-server.pem}:/etc/ssl/certs/xgt-server.pem:ro,Z
+      - ${MC_SSL_PROXY_PUBLIC_CERT:-~/.rocketgraph/.fallback_mount/certs/proxy-client-cert.pem}:/etc/ssl/certs/proxy-client-cert.pem:ro,Z
+      - ${MC_SSL_PROXY_PRIVATE_KEY:-~/.rocketgraph/.fallback_mount/certs/proxy-client-key.pem}:/etc/ssl/private/proxy-client-key.pem:ro,Z
       - mongodb-data:/app/data
-      - ${MC_ODBC_PATH:-/dev/null}:/odbc
-      - ${MC_IBM_IACCESS_PATH:-/dev/null}:/opt/ibm/iaccess
+      - ${MC_ODBC_PATH:-~/.rocketgraph/.fallback_mount/odbc}:/odbc:Z
+      - ${MC_IBM_IACCESS_PATH:-~/.rocketgraph/.fallback_mount/iaccess}:/opt/ibm/iaccess:Z
     depends_on:
       - mongodb
 
@@ -50,10 +50,10 @@ services:
     ports:
       - "${XGT_PORT:-4367}:4367"
     volumes:
-      - ${XGT_CONF_PATH:-~/.xgt/conf}:/conf
-      - ${XGT_DATA_PATH:-~/.xgt/data}:/data
-      - ${XGT_LOG_PATH:-~/.xgt/log}:/log
-      - ${XGT_LICENSE_FILE:-/dev/null}:/license/xgtd.lic
+      - ${XGT_CONF_PATH:-~/.rocketgraph/conf}:/conf:Z
+      - ${XGT_DATA_PATH:-~/.rocketgraph/data}:/data:Z
+      - ${XGT_LOG_PATH:-~/.rocketgraph/log}:/log:Z
+      - ${XGT_LICENSE_FILE:-~/.rocketgraph/.fallback_mount/license/xgtd.lic}:/license/xgtd.lic:Z
     networks:
       - external-network
 

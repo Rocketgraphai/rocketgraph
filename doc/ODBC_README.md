@@ -1,8 +1,30 @@
 # ODBC Configuration for Rocketgraph Mission Control
 
-This document provides detailed instructions on how to configure ODBC (Open Database Connectivity) support for the Rocketgraph Mission Control application. ODBC support enables Mission Control to interact with various database systems via ODBC drivers.
+This document explains how to configure ODBC (Open Database Connectivity) support for the Rocketgraph Mission Control application. ODBC allows Mission Control to connect to various database systems using ODBC drivers.
 
-> **Note:** This guide covers configuration for both MariaDB and IBM i (AS/400). Please follow the steps specific to your database.
+> **Note:** This guide covers configuration for PostgreSQL, MariaDB, and IBM i (AS/400). Follow the steps specific to your database.
+
+Rocketgraph includes preinstalled ODBC drivers for PostgreSQL and MariaDB. To use other drivers, place them in the `./odbc` directory on the host machine; this directory is mounted into the Docker container.
+
+To use a preinstalled driver, you can select it from the "Settings" page in Mission Control.
+
+The Settings page is accessible by clicking the gear icon in the top-right corner of the Mission Control app:
+
+<p align="center">
+  <img src="images/settings-menu.png" alt="Settings menu location" width="500">
+</p>
+
+Once on the Settings page, you can select the database type and ODBC driver to use:
+
+<p align="center">
+  <img src="images/database-select.png" alt="Choosing a connector" width="500">
+</p>
+
+Fill in the connection details such as server address, port, username, and password.
+
+For details on testing your connection, see the [Testing the Configuration](#testing-the-configuration) section.
+
+The sections below explain how to set up custom drivers for MariaDB and IBM Db2 on IBM i (AS/400) systems.
 
 ## Environment Variables
 
@@ -175,11 +197,29 @@ MC_ODBC_PATH=./odbc
 
 To verify that ODBC is set up correctly:
 
-- Start Rocketgraph Mission Control.
-- In the Mission Control app "Settings" menu, add a connection to the database using the DSNs or driver specified in `odbc.ini` or `odbcinst.ini`.
-- For example, for MariaDB:
-  `Driver={MariaDB};Server=127.0.0.1;Port=3306;Database=test;Uid=test;Pwd=foo;`
-- In the Mission Control app "Upload" tab, perform a test query to ensure the connection is successfully established.
+1. Start Rocketgraph Mission Control.
+2. Click the gear icon in the top-right corner of the app to access the settings:
+  <p align="center">
+    <img src="images/settings-menu.png" alt="Settings menu location" width="500">
+  </p>
+
+3. Select "Add Your Own" on the "Settings" page under "Database Connections" to create a custom connection or use a preinstalled driver:
+  <p align="center">
+    <img src="images/database-select-custom.png" alt="Creating a custom connection" width="500">
+  </p>
+
+4. Fill in the connection string with the DSNs or driver specified in `odbc.ini` or `odbcinst.ini`.
+   For example, for MariaDB:
+   ```bash
+   Driver={MariaDB};Server=127.0.0.1;Port=3306;Database=test;Uid=test;Pwd=foo;
+   ```
+
+5. Click the test connection button to verify that the connection can be established successfully:
+  <p align="center">
+    <img src="images/database-testing.png" alt="Test connection" width="500">
+  </p>
+
+6. Click "Save" at the bottom of the page to save the connection settings.
 
 ## Troubleshooting
 
