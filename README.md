@@ -148,20 +148,26 @@ The configurable environment variables are:
 
 |Variable                |Volume Mapped|Description|
 |------------------------|-|-----------|
-|MC_VERSION              | |release version to pull/run, default is "latest"|
+|MC_FRONTEND_IMAGE       | |image location for MC frontend, default is latest on Docker Hub|
+|MC_BACKEND_IMAGE        | |image location for MC backend, default is latest on Docker Hub|
 |MC_PORT                 | |alternative port for the http web server|
 |MC_SSL_PORT             | |alternative port for the https web server|
 |MC_DEFAULT_XGT_HOST     | |default login host for Mission Control|
 |MC_DEFAULT_XGT_PORT     | |default login port for Mission Control|
-|MC_ODBC_PATH            | |path to ODBC drivers for the connector|
-|MC_MONGO_URI            | |location of the database used by Mission Control|
+|MC_IBM_IACCESS_PATH     |Y|root directory for IBM i Access Client|
+|MC_ODBC_LIBRARY_PATH    | |directory for IBM i driver libraries|
+|MC_ODBC_PATH            |Y|path to ODBC drivers for the connector|
 |MC_MONGODB_IMAGE        | |used to specify the mongodb image for Power10 installs|
+|MC_MONGO_URI            | |location of the database used by Mission Control|
+|MC_SESSION_TTL          | |seconds from last event that MC login is valid|
+|MC_SITE_CONFIG_YML      |Y|path to site yaml config file|
+|MC_SITE_CONFIG_PY       |Y|path to site python custom LLM config file|
 |MC_SSL_PUBLIC_CERT      |Y|path to certificate on host to setup an https web server|
 |MC_SSL_PRIVATE_KEY      |Y|path to private key on host to setup an https web server|
 |MC_SSL_CERT_CHAIN       |Y|path to certificate chain used by the https web server to validate client certificates for mTLS|
 |MC_SSL_PROXY_PUBLIC_CERT|Y|path to certificate on host to use as a proxy connection to the xGT server|
 |MC_SSL_PROXY_PRIVATE_KEY|Y|path to private key on host to use as a proxy connection to the xGT server|
-|XGT_VERSION             | |release version to pull/run, default is "latest"|
+|XGT_IMAGE               | |image location for XGT, default is latest on Docker Hub|
 |XGT_PORT                | |port the xGT server should listen on|
 |XGT_LICENSE_FILE        |Y|path to xGT license file|
 |XGT_CONF_PATH           |Y|path to the configuration directory on host for the xGT server|
@@ -204,6 +210,14 @@ The variables that are volume mapped map point to a file or directory on the hos
        $ docker load --input mission-control-frontend.tar
        $ docker load --input mission-control-backend.tar
        ```
+
+ 1. If you need docker image versions other than latest or to get them from somewhere other than Docker Hub, set the MC_FRONTEND_IMAGE, MC_BACKEND_IMAGE, MC_MONGODB_IMAGE, and XGT_IMAGE environment variables.  For example:
+    ```dotenv
+    MC_FRONTEND_IMAGE=10.0.1.10/rocketgraph/mission-control-frontend:2.3.0
+    MC_BACKEND_IMAGE=10.0.1.10/rocketgraph/mission-control-backend:2.3.0
+    MC_MONGODB_IMAGE=10.0.1.10/library/mongo:latest
+    XGT_IMAGE=10.0.1.10/rocketgraph/xgt:2.3.0
+    ```
 
  1. If running the xGT server as part of the Compose project, setup a data directory using the environment variable XGT_DATA_PATH.  The default is ~/.rocketgraph/data if XGT_DATA_PATH is not set.  For example:
     ```dotenv
@@ -268,12 +282,12 @@ Additional databases can be connected by installing the appropriate ODBC driver,
  - Snowflake
  - Generic ODBC: Databricks, DB2, MySQL
 
-## Connect to a site-local LLM
+## LLM Configuration
 
-There are many reasons users may prefer to use their own LLM.
-Rocketgraph Mission Control can call out to a site-local LLM with a modest amount of configuration and Python scripting.
+Rocketgraph Mission Control is configured to support a set of common LLMs out of the box.
+It also has the ability to add a new LLM and modify the existing LLMs for your site via a yaml configuration file or a python configuration file.
 
-Refer to these detailed [instructions](doc/Site-Local-LLM.md).
+Refer to these detailed [instructions](doc/llm_site_config.md).
 
 ## License
 

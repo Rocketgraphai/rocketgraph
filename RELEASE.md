@@ -1,5 +1,51 @@
 # Launch Notes
 
+## 2.5.0 (2/9/2026)
+
+### New Features
+- Added agentic processing to query generation and improved user feedback on progress.
+- Added ability to cancel LLM request for query generation.
+- Improved text to query generation accuracy.
+- Added OpenAI ChatGPT 5.2 thinking and instant models.
+- Added Anthropic Claude 4.5 Haiku, Sonnet, and Opus models.
+- Queries now return vertices and edges as a single column instead of a column per property of the vertex or edge.
+  This fixes an issue where multiple instances of the same edge in results showed up more than once in the graph display.
+- Added select and run button to histories to select and execute a history item with one click.
+- Added highlighting to the answer graph when hovering over nodes or edges in the Data Explorer.
+- Added frame legend with color picker to graph display.
+- Added copy-to-clipboard for query results and JSON Schema display.
+- Added offline version of xGT release notes and documentation.
+- Added health checks to the frontend, backend, and database containers.
+
+### Changed
+- Improved and simplified LLM configuration using site_config.yml.
+- Improved handling of responses from many LLMs making text to Cypher and schema generation more reliable.
+- Changed LLM selector to show human readable names.
+- Updated pop-up behavior in schema and answer graphs:
+  - Tooltips now have a short delay before appearing.
+  - Pop-ups are non-interactive (clicking elements remains interactive).
+- Enhanced Rocketchat search with prev/next buttons, match count, and highlighting.
+- Improved formatting of some LLM results in Rocketchat.
+- Improved file to frame mapping after creating a graph and transitioning from the Schema page to the Upload page.
+- Refactored the application into multiple lazy loading zones to decrease initial load time.
+- Bookmark names and bookmark folder names now support symbols.
+- Improved layout when window is narrow.
+
+### Fixed
+- Fixed issue where errors during running jobs prevented job status from updating correctly in the Data Explorer.
+- Fixed issue where canceling a running job did not update the job status correctly in the Data Explorer.
+- Fixed crash caused by application configuration being accessed before it was fully loaded.
+- Fixed incorrect error codes from certain backend tasks, which caused errors to be handled improperly.
+- Fixed graph answer display not showing nodes or edges when variable names contained underscores.
+- Fixed JSON schema loader failing to report invalid keys when loading malformed JSON.
+- Fixed issue where rotating the JWT token too frequently caused some issues including unexpected logouts.
+- Fixed bug where canceled jobs sometimes failed to update their status to 'canceled'.
+- Fixed issue where certain upload errors weren't being propagated to the user.
+- Fixed issue where the horizontal scroll bar could overlap data in Chrome for results table.
+- Fixed some security issues to prevent malicious code injection.
+- Fixed issue where the 404 and error pages were sometimes not displaying properly.
+
+
 ## 2.4.0 (9/2/2025)
 
 ### New Features
@@ -29,13 +75,13 @@
 - Fixed bug where demo data failed if the load took more than 30 seconds.
 - Fixed issues when running the containerized xGT with SELinux.
 - Fixed bug where occasionally a user would be incorrectly logged out due to an invalid timeout between Mission Control and the xGT server.
-- Fixed an issue where graphs could be generated with empty schemas.
-- Fixed an issue where the history button did not appear clickable for some inputs.
-- Fixed a bug in error handling logic where valid error messages were lost and replaced with NameError (undefined symbol).
-- Fixed an issue where schema graphs could randomly select nodes or edges while dragging the display.
-- Fixed an issue where loading multiple demo samples simultaneously could cause load failures.
-- Fixed a bug where dragging a single node on the schema graph caused it to snap back to its original position.
-- Fixed a bug in the schema graph where, after dragging, hovering over a node or edge showed the overlay popup at the mouse’s previous position instead of the current one.
+- Fixed issue where graphs could be generated with empty schemas.
+- Fixed issue where the history button did not appear clickable for some inputs.
+- Fixed bug in error handling logic where valid error messages were lost and replaced with NameError (undefined symbol).
+- Fixed issue where schema graphs could randomly select nodes or edges while dragging the display.
+- Fixed issue where loading multiple demo samples simultaneously could cause load failures.
+- Fixed bug where dragging a single node on the schema graph caused it to snap back to its original position.
+- Fixed bug in the schema graph where, after dragging, hovering over a node or edge showed the overlay pop-up at the mouse’s previous position instead of the current one.
 
 
 ## 2.3.0 (6/9/2025)
@@ -73,7 +119,7 @@
 ### Fixed
 - Fixed answer graph visualization to distinguish nodes by both frame type and key value to prevent incorrect merges across node types with overlapping keys.
 - Fixed CSV inference failure caused by unnormalized Windows line endings by standardizing line breaks before parsing.
-- Fixed a bug where the answer graph visualization could hang when the same label was used multiple times or when properties were aliased.
+- Fixed bug where the answer graph visualization could hang when the same label was used multiple times or when properties were aliased.
 
 
 ## 2.2.1 (4/9/2025)
@@ -84,8 +130,8 @@
 - Starting with 2.2.1, Mission Control can be compatible with older or newer versions of the xGT server.
 
 ### Fixed
-- Fixed a bug where null edges or nodes sometimes showed up in a graph visualization.
-- Fixed a bug where the wrong query was sometimes put in the query box on the data explorer page when navigating from the jobs page by clicking on viewing the job data.
+- Fixed bug where null edges or nodes sometimes showed up in a graph visualization.
+- Fixed bug where the wrong query was sometimes put in the query box on the data explorer page when navigating from the jobs page by clicking on viewing the job data.
 
 
 ## 2.2.0 (3/31/2025)
@@ -109,6 +155,6 @@
 - Removed Logs page as it was basically a duplication of the Jobs page.
 
 ### Fixed
-- Fixed a bug where the wrong properties were sometimes displayed in the answer graph when multiple nodes or edges from the same frame were given in the RETURN statement.
-- Fixed an issue where Mistral results were being interpreted incorrectly and causing errors.
-- Fixed a bug where the graph creation button became permanently disabled after a failed attempt to create a graph.
+- Fixed bug where the wrong properties were sometimes displayed in the answer graph when multiple nodes or edges from the same frame were given in the RETURN statement.
+- Fixed issue where Mistral results were being interpreted incorrectly and causing errors.
+- Fixed bug where the graph creation button became permanently disabled after a failed attempt to create a graph.
