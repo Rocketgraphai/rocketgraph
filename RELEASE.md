@@ -1,5 +1,47 @@
 # Launch Notes
 
+## 2.6.0 (4/2/2026)
+
+### New Features
+- Added OpenID Connect (OIDC) authentication support.
+- Added coloring rules for nodes to answer graph display.
+- Added ability to expand answer graph and dynamic visualization charts to full window.
+- Added bookmark export and import with preview dialog, tree view, and icons.
+- Added select-all checkbox and selection improvements to bookmarks.
+- Added Cypher error diagnosis tool for improved LLM query debugging.
+- Added prompt injection detection to improve security.
+- Added newer OpenAI models and Anthropic Claude Opus 4.6 and Sonnet 4.6 models.
+- Added whole graph analytics (WGA) algorithms to text-to-Cypher system prompts.
+- Added health check to the xgt container.
+- Added Platform Stack image to the system architecture help diagrams.
+
+### Changed
+- Simplified advanced LLM configuration.
+- Improved formatting of code returned by LLM in chatbot.
+- Improved dynamic visualization charts on Data Explorer page.
+- Improved schema graph and answer graph behavior.
+- Improved performance of answer graph on Data Explorer page.
+- Improved upload page UX with on-demand checkboxes, settings panel rework, and defaults dialog.
+- Improved security by addressing CORS concerns and removing unused routes and legacy code.
+- Refined system prompts for text-to-Cypher and schema generation.
+- Consistently use the term "frame" instead of a mix of "type" and "frame" in the frontend.
+- Removed deprecated OpenAI and Anthropic models.
+
+### Fixed
+- Fixed bookmark drag-and-drop issues including stale closures and path updates.
+- Fixed node and edge hover tooltip not disappearing when moving mouse off graph.
+- Fixed issues with graph vs. namespace datasets.
+- Fixed upload default settings save overwriting options not present.
+- Fixed shift-click selection in sorted and filtered grids on upload page.
+- Fixed datetime validation issues.
+- Fixed web and ODBC upload issues.
+- Fixed issue where LLM selection was unset if the stored choice was deleted.
+- Fixed issue where graph error message persisted when switching to a non-graph query.
+- Fixed frame deletion failing for frames that are members of a graph.
+- Fixed demo data reload failing when frames had been cleared or the edge frame had been deleted.
+- Fixed error messages not being displayed when frame deletion or clearing failed.
+
+
 ## 2.5.0 (2/9/2026)
 
 ### New Features

@@ -176,6 +176,16 @@ The configurable environment variables are:
 |XGT_AUTH_TYPES          | |sets xGT server authentication types available in Mission Control|
 |XGT_SSL_SERVER_CERT     |Y|path to chain file on host for the xGT server’s certificate|
 |XGT_SERVER_CN           | |common name on the xGT server’s certificate|
+|MC_OIDC_ISSUER          | |*(experimental)* OIDC issuer URL; if empty, discovered from the xGT server|
+|MC_OIDC_CLIENT_ID       | |*(experimental)* OAuth2 client ID; if empty, discovered from the xGT server|
+|MC_OIDC_CLIENT_SECRET   | |*(experimental)* client secret for confidential OAuth2 clients|
+|MC_OIDC_SCOPES          | |*(experimental)* space-separated OAuth2 scopes to request; default: `openid profile email`|
+|MC_OIDC_FRONTEND_URL    | |*(experimental)* override the frontend base URL for post-login redirects; derived server-side from the request hostname and `MC_PORT`/`MC_SSL_PORT` by default|
+|MC_OIDC_REDIRECT_URI    | |*(experimental)* override the redirect URI sent to the IdP; derived server-side from the request hostname and `MC_PORT`/`MC_SSL_PORT` by default|
+|MC_OIDC_ALLOWED_ORIGINS | |*(experimental)* comma-separated list of permitted frontend origins; `*` wildcards supported (e.g. `https://*.apps.cluster.example.com`); optional defense-in-depth|
+|MC_OIDC_TLS_VERIFY      | |*(experimental)* TLS verification for OIDC calls: `true` (default), `false`, or a path to a CA bundle|
+|MC_OIDC_CA_CERT         |Y|*(experimental)* path to a CA bundle PEM file to trust for OIDC HTTPS calls|
+|MC_XGT_ALLOWED_HOSTS    | |comma-separated allowlist of permitted xGT servers as `host:port` pairs; `*` wildcards supported (e.g. `xgt-*.xgt.myns.svc.cluster.local:4367`); when set, connections to any non-matching host are rejected; recommended when the xGT host is user-supplied (prevents SSRF)|
 
 The variables that are volume mapped map point to a file or directory on the host that gets mapped to an expected location in the containers.
 
@@ -213,10 +223,10 @@ The variables that are volume mapped map point to a file or directory on the hos
 
  1. If you need docker image versions other than latest or to get them from somewhere other than Docker Hub, set the MC_FRONTEND_IMAGE, MC_BACKEND_IMAGE, MC_MONGODB_IMAGE, and XGT_IMAGE environment variables.  For example:
     ```dotenv
-    MC_FRONTEND_IMAGE=10.0.1.10/rocketgraph/mission-control-frontend:2.3.0
-    MC_BACKEND_IMAGE=10.0.1.10/rocketgraph/mission-control-backend:2.3.0
+    MC_FRONTEND_IMAGE=10.0.1.10/rocketgraph/mission-control-frontend:2.6.0
+    MC_BACKEND_IMAGE=10.0.1.10/rocketgraph/mission-control-backend:2.6.0
     MC_MONGODB_IMAGE=10.0.1.10/library/mongo:latest
-    XGT_IMAGE=10.0.1.10/rocketgraph/xgt:2.3.0
+    XGT_IMAGE=10.0.1.10/rocketgraph/xgt:2.6.0
     ```
 
  1. If running the xGT server as part of the Compose project, setup a data directory using the environment variable XGT_DATA_PATH.  The default is ~/.rocketgraph/data if XGT_DATA_PATH is not set.  For example:
@@ -269,6 +279,10 @@ The variables that are volume mapped map point to a file or directory on the hos
 
  1. Aim a browser to the system running this Docker application and log in to Mission Control.
 
+## Kubernetes / OpenShift
+
+Rocketgraph Mission Control can also be deployed on Kubernetes or OpenShift using the Helm chart in the [`charts/rocketgraph/`](charts/rocketgraph/) directory.  Refer to the [Helm chart documentation](charts/rocketgraph/README.md) for installation and configuration instructions, including OpenShift-specific setup, TLS, OIDC, LDAP, and more.
+
 ## Database Connectivity
 
 Rocketgraph Mission Control supports loading data from a database.  Refer to the [ODBC documentation](doc/ODBC_README.md) for connection instructions.
@@ -288,6 +302,15 @@ Rocketgraph Mission Control is configured to support a set of common LLMs out of
 It also has the ability to add a new LLM and modify the existing LLMs for your site via a yaml configuration file or a python configuration file.
 
 Refer to these detailed [instructions](doc/llm_site_config.md).
+
+## OIDC Authentication (Experimental)
+
+Mission Control has experimental support for authenticating users via an
+external OpenID Connect (OIDC) identity provider such as Keycloak or
+OpenShift OAuth.
+
+Refer to the [OIDC configuration guide](doc/oidc_configuration.md) for setup
+instructions.
 
 ## License
 

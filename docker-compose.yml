@@ -29,6 +29,8 @@ services:
     image: ${MC_BACKEND_IMAGE:-docker.io/rocketgraph/mission-control-backend:latest}
     environment:
       MC_MONGO_URI: mongodb://mongodb:27017
+      MC_PORT: ${MC_PORT:-80}
+      MC_SSL_PORT: ${MC_SSL_PORT:-443}
       MC_DEFAULT_XGT_HOST: ${MC_DEFAULT_XGT_HOST:-}
       MC_DEFAULT_XGT_PORT: ${MC_DEFAULT_XGT_PORT:-}
       MC_SESSION_TTL: ${MC_SESSION_TTL:-}
@@ -38,6 +40,15 @@ services:
       MC_SSL_PROXY_PRIVATE_KEY: ${MC_SSL_PROXY_PRIVATE_KEY:-}
       XGT_SERVER_CN: ${XGT_SERVER_CN:-}
       XGT_AUTH_TYPES: ${XGT_AUTH_TYPES:-}
+      MC_OIDC_ISSUER: ${MC_OIDC_ISSUER:-}
+      MC_OIDC_CLIENT_ID: ${MC_OIDC_CLIENT_ID:-}
+      MC_OIDC_CLIENT_SECRET: ${MC_OIDC_CLIENT_SECRET:-}
+      MC_OIDC_SCOPES: ${MC_OIDC_SCOPES:-}
+      MC_OIDC_FRONTEND_URL: ${MC_OIDC_FRONTEND_URL:-}
+      MC_OIDC_REDIRECT_URI: ${MC_OIDC_REDIRECT_URI:-}
+      MC_OIDC_ALLOWED_ORIGINS: ${MC_OIDC_ALLOWED_ORIGINS:-}
+      MC_OIDC_TLS_VERIFY: ${MC_OIDC_TLS_VERIFY:-}
+      MC_XGT_ALLOWED_HOSTS: ${MC_XGT_ALLOWED_HOSTS:-}
       LD_LIBRARY_PATH: "/odbc:${MC_ODBC_LIBRARY_PATH-}"
     networks:
       - database-network
@@ -50,6 +61,7 @@ services:
       - ${MC_IBM_IACCESS_PATH:-~/.rocketgraph/.fallback_mount/iaccess}:/opt/ibm/iaccess:Z
       - ${MC_SITE_CONFIG_YML:-~/.rocketgraph/.fallback_mount/site_config.yml}:/app/site_config/site_config.yml:ro,Z
       - ${MC_SITE_CONFIG_PY:-~/.rocketgraph/.fallback_mount/site_config.py}:/app/site_config/site_config.py:ro,Z
+      - ${MC_OIDC_CA_CERT:-~/.rocketgraph/.fallback_mount/oidc-ca.pem}:/etc/ssl/certs/oidc-ca.pem:ro,z
     depends_on:
       mongodb:
         condition: service_healthy
@@ -69,6 +81,13 @@ services:
       - ${XGT_DATA_PATH:-~/.rocketgraph/data}:/data:Z
       - ${XGT_LOG_PATH:-~/.rocketgraph/log}:/log:Z
       - ${XGT_LICENSE_FILE:-~/.rocketgraph/.fallback_mount/license/xgtd.lic}:/license/xgtd.lic:Z
+      - ${MC_OIDC_CA_CERT:-~/.rocketgraph/.fallback_mount/oidc-ca.pem}:/etc/ssl/certs/oidc-ca.pem:ro,z
+    healthcheck:
+      test: ["CMD-SHELL", "if [ -x /bin/grpc_health_probe ]; then /bin/grpc_health_probe -addr=:4366; else bash -c 'echo > /dev/tcp/localhost/4367'; fi"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
     networks:
       - external-network
 

@@ -38,8 +38,8 @@ custom API logic, you can use a Python-based `site_config.py` instead.
 - [Advanced: Python Configuration](#advanced-python-configuration)
   - [When to Use Python Configuration](#when-to-use-python-configuration)
   - [Setup](#setup-1)
-  - [Configuration Variables](#configuration-variables)
   - [Writing a Callback Function](#writing-a-callback-function)
+  - [Defining the Model in YAML](#defining-the-model-in-yaml)
   - [Complete Example](#complete-example)
 
 ## Overview
@@ -69,8 +69,8 @@ list. This is a whitelist - only models in this list will be enabled:
 ```yaml
 llms:
   enabled_models:
-    - openai_gpt_4_1
-    - anthropic_claude_sonnet_4_5
+    - openai_gpt_5_4
+    - anthropic_claude_sonnet_4_6
 ```
 
 This is simpler than setting `enabled: true/false` on individual models and is
@@ -97,7 +97,7 @@ llms:
   providers:
     anthropic:
       models:
-        anthropic_claude_opus_4_5:
+        anthropic_claude_opus_4_6:
           enabled: false
 ```
 
@@ -190,7 +190,7 @@ llms:
   providers:
     anthropic:
       models:
-        anthropic_claude_opus_4_5:
+        anthropic_claude_opus_4_6:
           temperature: 0.2
           max_tokens: 16384
           timeout: 180
@@ -288,25 +288,28 @@ enabled are available immediately once credentials are configured.
 
 | Model Name | Display Name | API Model ID | Enabled | Description |
 |------------|--------------|--------------|---------|-------------|
-| `openai_gpt_5_2_thinking` | GPT-5.2 Thinking | gpt-5.2 | Yes | OpenAI's most capable model with extended thinking for complex reasoning tasks. Best for multi-step problems and detailed analysis. |
-| `openai_gpt_5_2_instant` | GPT-5.2 Instant | gpt-5.2-chat-latest | Yes | Fast GPT-5.2 variant optimized for quick responses. Good balance of capability and speed for everyday tasks. |
-| `openai_gpt_4_1` | GPT-4.1 | gpt-4.1 | Yes | Updated GPT-4 with improved instruction following and coding abilities. Reliable general-purpose model. |
-| `openai_gpt_4o` | GPT-4o | gpt-4o | No | Multimodal GPT-4 model capable of processing text and images. Faster and more efficient than earlier GPT-4 versions. |
-| `openai_gpt_4o_mini` | GPT-4o mini | gpt-4o-mini | No | Smaller, faster, and more cost-effective GPT-4o variant. Good for simpler tasks where speed matters. |
+| `openai_gpt_5_4` | GPT-5.4 | gpt-5.4 | Yes | OpenAI's most capable model. Best for multi-step problems and detailed analysis. |
+| `openai_gpt_5_4_mini` | GPT-5.4 Mini | gpt-5.4-mini | Yes | Smaller, faster GPT-5.4 variant. Good balance of capability and speed for everyday tasks. |
+| `openai_gpt_5_4_nano` | GPT-5.4 Nano | gpt-5.4-nano | No | Smallest GPT-5.4 variant. Most cost-effective option for simpler tasks where speed matters. |
+| `openai_gpt_5_3_chat` | GPT-5.3 Chat | gpt-5.3-chat-latest | Yes | Fast GPT-5.3 chat variant optimized for quick, conversational responses. |
+| `openai_gpt_5_2` | GPT-5.2 | gpt-5.2 | No | Previous generation GPT-5.2 model. Still highly capable for complex reasoning tasks. |
+| `openai_gpt_5_2_chat` | GPT-5.2 Chat | gpt-5.2-chat-latest | No | Previous generation GPT-5.2 chat variant optimized for quick responses. |
 | `openai_o3` | o3 | o3 | No | OpenAI's advanced reasoning model using chain-of-thought. Excels at math, science, and coding problems. |
 | `openai_o3_mini` | o3 Mini | o3-mini | No | Smaller o3 reasoning model. Faster and cheaper while retaining strong reasoning capabilities. |
+| `openai_gpt_4_1` | GPT-4.1 | gpt-4.1 | No | Updated GPT-4 with improved instruction following and coding abilities. Reliable general-purpose model. |
+| `openai_gpt_4o` | GPT-4o | gpt-4o | No | Multimodal GPT-4 model capable of processing text and images. Faster and more efficient than earlier GPT-4 versions. |
+| `openai_gpt_4o_mini` | GPT-4o Mini | gpt-4o-mini | No | Smaller, faster, and more cost-effective GPT-4o variant. Good for simpler tasks where speed matters. |
 
 ### Anthropic Models
 
 | Model Name | Display Name | API Model ID | Enabled | Description |
 |------------|--------------|--------------|---------|-------------|
-| `anthropic_claude_opus_4_5` | Claude Opus 4.5 | claude-opus-4-5-20251101 | Yes | Anthropic's most capable model. Excels at complex analysis, nuanced writing, and difficult reasoning tasks. |
-| `anthropic_claude_sonnet_4_5` | Claude Sonnet 4.5 | claude-sonnet-4-5-20250929 | Yes | Balanced performance and speed. Excellent for most tasks including coding, analysis, and content generation. |
+| `anthropic_claude_opus_4_6` | Claude Opus 4.6 | claude-opus-4-6 | Yes | Anthropic's most capable model. Excels at complex analysis, nuanced writing, and difficult reasoning tasks. |
+| `anthropic_claude_sonnet_4_6` | Claude Sonnet 4.6 | claude-sonnet-4-6 | Yes | Balanced performance and speed. Excellent for most tasks including coding, analysis, and content generation. |
 | `anthropic_claude_haiku_4_5` | Claude Haiku 4.5 | claude-haiku-4-5-20251001 | Yes | Fast and efficient for straightforward tasks. Best for high-volume, lower-complexity workloads. |
-| `anthropic_claude_opus_4_1` | Claude Opus 4.1 | claude-opus-4-1-20250805 | No | Previous Opus generation. Still highly capable for complex tasks. |
-| `anthropic_claude_opus_4` | Claude Opus 4 | claude-opus-4-20250514 | No | Earlier Opus 4 release. Strong reasoning and analysis capabilities. |
-| `anthropic_claude_sonnet_4` | Claude Sonnet 4 | claude-sonnet-4-20250514 | No | Earlier Sonnet 4 release. Good general-purpose model with balanced capabilities. |
-| `anthropic_claude_3_haiku` | Claude Haiku 3 | claude-3-haiku-20240307 | No | Legacy fast model. Useful for simple, high-throughput tasks where older API compatibility is needed. |
+| `anthropic_claude_opus_4_5` | Claude Opus 4.5 | claude-opus-4-5-20251101 | No | Previous Opus generation. Still highly capable for complex tasks. |
+| `anthropic_claude_sonnet_4_5` | Claude Sonnet 4.5 | claude-sonnet-4-5-20250929 | No | Previous Sonnet generation. Good general-purpose model with balanced capabilities. |
+| `anthropic_claude_opus_4_1` | Claude Opus 4.1 | claude-opus-4-1-20250805 | No | Earlier Opus release. Strong reasoning and analysis capabilities. |
 
 ## Available Templates
 
@@ -362,9 +365,9 @@ enabled, regardless of their individual `enabled` property.
 ```yaml
 llms:
   enabled_models:
-    - openai_gpt_4_1
-    - openai_gpt_4o
-    - anthropic_claude_sonnet_4_5
+    - openai_gpt_5_4
+    - openai_gpt_5_4_mini
+    - anthropic_claude_sonnet_4_6
     - anthropic_claude_haiku_4_5
 ```
 
@@ -373,16 +376,11 @@ llms:
 1. `config.yml` per-model `enabled` property (lowest priority)
 2. `site_config.yml` per-model `enabled` property
 3. `site_config.yml` `enabled_models` list (overrides all per-model settings)
-4. `site_config.py` operations (`LLM_CONFIG_local_add`, `_replace`, `_delete`) (highest priority)
 
 **Key behaviors:**
 
 - If `enabled_models` is not present, the per-model `enabled` properties are used
-- If `enabled_models` is present but empty (`enabled_models: []`), no models from the
-  YAML configuration are enabled
-- Models added via `site_config.py` `LLM_CONFIG_local_add` are always enabled
-  (they bypass the `enabled_models` filter)
-- `LLM_CONFIG_local_delete` can remove models that were enabled by `enabled_models`
+- If `enabled_models` is present but empty (`enabled_models: []`), no models are enabled
 
 ### Credentials Configuration
 
@@ -457,9 +455,10 @@ llms:
           # Display
           display_name: "Friendly Name" # Name shown in UI
 
-          # Connection
+          # Connection (use template OR callback, not both)
           endpoint_url: "https://..."   # API base URL
           template: "template_name"     # Request/response template
+          callback: "function_name"     # Python callback in site_config.py
           credentials: "cred_name"      # Which credentials to use
 
           # Request parameters
@@ -586,13 +585,14 @@ The file will be mounted into the container at `/app/site_config/site_config.yml
 
 ## Advanced: Python Configuration
 
-For advanced use cases where YAML configuration is not sufficient, you can use a
-Python-based configuration file (`site_config.py`) that allows you to define
-custom callback functions to handle LLM API calls.
+For advanced use cases where the built-in templates are not sufficient, you can
+create a Python-based `site_config.py` that defines custom callback functions
+to handle LLM API calls. The model itself is still defined in `site_config.yml`
+and references the callback function by name.
 
 ### When to Use Python Configuration
 
-Use `site_config.py` instead of `site_config.yml` when you need to:
+Use `site_config.py` in addition to `site_config.yml` when you need to:
 
 - Connect to an LLM API that doesn't follow standard patterns (OpenAI-compatible,
   Anthropic, or Ollama)
@@ -601,29 +601,37 @@ Use `site_config.py` instead of `site_config.yml` when you need to:
 - Handle non-standard response formats
 - Integrate with internal services that require custom logic
 
-For standard LLM providers, the YAML configuration is simpler and recommended.
+For standard LLM providers, the YAML configuration alone is sufficient and
+recommended.
 
 ### Setup
 
-1. Create a `site_config.py` file on your host machine.
-2. Set the `MC_SITE_CONFIG_PY` environment variable to point to your file.
-3. Start the compose project.
+1. Define your callback function(s) in a `site_config.py` file on your host machine.
+1. Define your model in `site_config.yml` with a `callback` field referencing the
+   function name.
+1. Set the `MC_SITE_CONFIG_PY` environment variable to point to your Python file.
+1. Set the `MC_SITE_CONFIG_YML` environment variable to point to your YAML file.
+1. Start the compose project.
 
 ```bash
-# Create your config file
+# Create your config files
 mkdir -p ~/.rocketgraph
 vi ~/.rocketgraph/site_config.py
+vi ~/.rocketgraph/site_config.yml
 
-# Set the environment variable (add to your shell profile or .env file)
+# Set the environment variables (add to your shell profile or .env file)
 export MC_SITE_CONFIG_PY=~/.rocketgraph/site_config.py
+export MC_SITE_CONFIG_YML=~/.rocketgraph/site_config.yml
 ```
 
-The file will be mounted into the container at `/app/site_config/site_config.py`.
+The files will be mounted into the container at `/app/site_config/`.
 
 ## API Details for an LLM
 
-To write a Python callback that calls your LLM and returns its response to Mission Control, you need to understand the LLM's API details.
-The most important piece is the response JSON structure, which tells your code where to find the LLM's answer.
+To write a Python callback that calls your LLM and returns its response to
+Mission Control, you need to understand the LLM's API details. The most
+important piece is the response JSON structure, which tells your code where
+to find the LLM's answer.
 
 Sample LLM API Structure:
 
@@ -656,61 +664,20 @@ Sample LLM API Structure:
     }
     ```
 
-### Configuration Variables
-
-Your `site_config.py` can define any of these variables to modify the LLM
-configuration:
-
-**For LLM model configurations:**
-
-| Variable | Type | Description |
-|----------|------|-------------|
-| `LLM_CONFIG_local_add` | dict | Add new model configurations (merged with defaults) |
-| `LLM_CONFIG_local_replace` | dict | Replace all model configurations (removes defaults) |
-| `LLM_CONFIG_local_delete` | list | List of model keys to remove from defaults |
-
-A model dictionary is defined as follows:
-
-```
-{
-  '<model_key>': {
-    'model': '<model_id>',
-    ...
-  }
-}
-```
-
-These are the available fields to configure a model.
-
-| Field | Required | Description |
-|-------|----------|-------------|
-| `model` | Yes | The model ID to send to the API |
-| `callback` | Yes | Name of the function in this file to call |
-| `credentials` | No | Credential type to use (e.g., `'openai'`, `'anthropic'`) |
-| `display_name` | No | Name shown in the UI (defaults to the config key) |
-| `temperature` | No | Temperature setting (default: 0.05) |
-| `max_tokens` | No | Maximum tokens (default: 4096) |
-| `timeout` | No | Request timeout in seconds (default: 60) |
-| `max_retries` | No | Number of retry attempts (default: 3) |
-
 ### Writing a Callback Function
 
-When adding a model with a custom callback, define a function in your
-`site_config.py` that handles the API call. The function signature is:
+Define a function in your `site_config.py` that handles the API call. The
+function signature is:
 
 ```python
-def my_callback(llm_config: LLMConfig,
-                llm_credentials: LLMCredentials,
-                question: str,
-                prompt: str,
-                history: list,
-                **kwargs) -> str:
+def my_callback(llm_config, llm_credentials, question, prompt,
+                history, **kwargs):
 ```
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| `llm_config` | `LLMConfig` | Model configuration (model, temperature, max_tokens, etc.) |
-| `llm_credentials` | `LLMCredentials` | User's credentials for this model |
+| `llm_config` | `dict` | Model configuration dictionary |
+| `llm_credentials` | `dict` | User's credential values for this model |
 | `question` | `str` | The user's question |
 | `prompt` | `str` | System prompt |
 | `history` | `list` | Conversation history as list of `{ "role": ..., "content": ... }` |
@@ -720,27 +687,37 @@ The function must return a string containing the LLM's response.
 
 **Accessing model config:**
 
-The `LLMConfig` object is a dataclass with the same attributes given when defining a model.
+The `llm_config` dictionary contains the following keys:
+
+| Key | Type | Description |
+|-----|------|-------------|
+| `model` | `str` | Model ID sent to the API (e.g., `'gpt-4o-mini'`) |
+| `credentials` | `str` | Credential type name (e.g., `'openai'`) |
+| `display_name` | `str` | Human-readable model name |
+| `endpoint_url` | `str` | API base URL |
+| `temperature` | `float` | Temperature setting (default: 0.05) |
+| `max_tokens` | `int` | Maximum response tokens (default: 4096) |
+| `timeout` | `int` | Request timeout in seconds (default: 60) |
+| `max_retries` | `int` | Number of retry attempts (default: 3) |
+
 For example:
 
 ```python
-model = llm_config.model              # Model ID (e.g., 'gpt-4o-mini')
-temperature = llm_config.temperature  # Default: 0.05
+model = llm_config['model']              # 'gpt-4o-mini'
+temperature = llm_config['temperature']  # 0.05
 ```
 
 **Accessing credentials:**
 
-The `LLMCredentials` object provides a `get_value()` method that accesses user inputs for credential fields.
-The method supports giving a default fallback value.
-For example, this gets the user's api key for an openai credential type:
+The `llm_credentials` dictionary contains the credential values entered by the
+user. The keys are the `name` property of each credential field (not the YAML
+field key). For example:
 
 ```python
-api_key = llm_credentials.get_value('api_key', '')
+api_key = llm_credentials.get('api_key', '')
 ```
 
-The `LLMCredentials` object contains:
-
-The `get_value()` method accesses key / value pairs where the key is the `name` property of each credential field (not the YAML field key). The value is the actual user inputted value for that field.  For example:
+Credential values by credential type:
 
 | Credential Type | Keys | Values |
 |-----------------|------|--------|
@@ -748,20 +725,49 @@ The `get_value()` method accesses key / value pairs where the key is the `name` 
 | `anthropic` | `api_key` | `{ "api_key": "sk-ant-..." }` |
 | `aws_bedrock` | `aws_region`, `aws_access_key`, `aws_secret_access_key` | `{ "aws_region": "us-east-1", "aws_access_key": "AKIA...", "aws_secret_access_key": "..." }` |
 
+### Defining the Model in YAML
+
+The model that uses the callback is defined in `site_config.yml`, not in
+`site_config.py`. Use the `callback` field instead of `template` to reference
+the Python function by name:
+
+```yaml
+llms:
+  providers:
+    my_provider:
+      models:
+        my_custom_model:
+          display_name: "My Custom Model"
+          model: "model-id"
+          callback: "my_callback"        # Function name in site_config.py
+          credentials: "openai"          # Credential type for user auth
+          temperature: 0.1
+          max_tokens: 4096
+          timeout: 60
+          enabled: true
+```
+
+The `callback` field replaces `template`.  A model should have one or the
+other, not both. All other model fields (credentials, temperature, etc.) work
+the same as for template-based models and are accessible via the `llm_config`
+parameter in the callback function.
+
 ### Complete Example
 
-This example adds a custom OpenAI model with a callback function:
+This example adds a custom OpenAI model using a callback. It requires two
+files: `site_config.py` for the callback function and `site_config.yml` for
+the model and credential definitions.
+
+**site_config.py** -- callback function only:
 
 ```python
-# site_config.py - Custom OpenAI integration
-
-def call_openai(llm_config: LLMConfig, llm_credentials: LLMCredentials,
-                question: str, prompt: str, history: list, **kwargs) -> str:
+def call_openai(llm_config, llm_credentials, question, prompt,
+                history, **kwargs):
   """Call OpenAI Chat Completions API."""
   import requests
 
   # Get API key from credentials.
-  api_key = llm_credentials.get_value('api_key', '')
+  api_key = llm_credentials.get('api_key', '')
   if not api_key:
     return "Error: OpenAI API key not provided"
 
@@ -781,10 +787,10 @@ def call_openai(llm_config: LLMConfig, llm_credentials: LLMCredentials,
   }
 
   payload = {
-    "model": llm_config.model,
+    "model": llm_config['model'],
     "messages": messages,
-    "max_tokens": llm_config.max_tokens,
-    "temperature": llm_config.temperature,
+    "max_tokens": llm_config['max_tokens'],
+    "temperature": llm_config['temperature'],
   }
 
   try:
@@ -792,7 +798,7 @@ def call_openai(llm_config: LLMConfig, llm_credentials: LLMCredentials,
       "https://api.openai.com/v1/chat/completions",
       json = payload,
       headers = headers,
-      timeout = 60
+      timeout = llm_config['timeout']
     )
     response.raise_for_status()
     result = response.json()
@@ -802,17 +808,33 @@ def call_openai(llm_config: LLMConfig, llm_credentials: LLMCredentials,
                   .get('content', str(result)))
   except requests.exceptions.RequestException as e:
     return f"Error calling OpenAI API: {str(e)}"
+```
 
-# Add OpenAI model configuration.
-# The 'callback' field references the function name defined above.
-LLM_CONFIG_local_add = {
-  'custom_OpenAI-GPT4o-mini': {
-    'model': 'gpt-4o-mini',
-    'callback': 'call_openai',
-    'credentials': 'openai',
-    'temperature': 0.1,
-    'max_tokens': 4096,
-    'timeout': 60,
-  }
-}
+**site_config.yml** -- model and credential definitions:
+
+```yaml
+llms:
+  credentials:
+    custom_openai:
+      display_name: "Custom OpenAI"
+      fields:
+        custom_openai_api_key:
+          display_name: "OpenAI API Key"
+          name: "api_key"
+          type: "text"
+          mask: true
+          required: true
+
+  providers:
+    custom_openai:
+      models:
+        custom_openai_gpt_4o_mini:
+          display_name: "Custom GPT-4o Mini"
+          model: "gpt-4o-mini"
+          callback: "call_openai"
+          credentials: "custom_openai"
+          temperature: 0.1
+          max_tokens: 4096
+          timeout: 60
+          enabled: true
 ```
