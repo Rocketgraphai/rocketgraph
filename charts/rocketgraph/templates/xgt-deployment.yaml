@@ -1,0 +1,177 @@
+{{- if .Values.xgt.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "rocketgraph.fullname.xgt" . }}
+  labels:
+    app: xgt
+    {{- include "rocketgraph.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.xgt.replicas }}
+  selector:
+    matchLabels:
+      app: xgt
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: xgt
+        app.kubernetes.io/instance: {{ .Release.Name }}
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/xgt-configmap.yaml") . | sha256sum }}
+        {{- if or .Values.backend.oidc.caCert .Values.backend.oidc.caCertExistingSecret }}
+        checksum/oidc-ca-secret: {{ .Values.backend.oidc.caCert | default .Values.backend.oidc.caCertExistingSecret | sha256sum }}
+        {{- end }}
+        {{- with .Values.xgt.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if .Values.openshift.enabled }}
+      serviceAccountName: {{ include "rocketgraph.fullname.serviceaccount" . }}
+      {{- end }}
+      {{- with .Values.xgt.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: xgt
+          image: "{{ .Values.xgt.image.repository }}:{{ coalesce .Values.imageVersions.xgt .Values.xgt.image.tag .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.xgt.image.pullPolicy }}
+          {{- with .Values.xgt.containerSecurityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          ports:
+            - name: xgt
+              containerPort: {{ .Values.xgt.port }}
+              protocol: TCP
+          startupProbe:
+            grpc:
+              port: {{ .Values.xgt.healthCheck.port }}
+            periodSeconds: {{ .Values.xgt.startupProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.xgt.startupProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.xgt.startupProbe.failureThreshold }}
+          readinessProbe:
+            grpc:
+              port: {{ .Values.xgt.healthCheck.port }}
+            periodSeconds: {{ .Values.xgt.readinessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.xgt.readinessProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.xgt.readinessProbe.failureThreshold }}
+          livenessProbe:
+            grpc:
+              port: {{ .Values.xgt.healthCheck.port }}
+            periodSeconds: {{ .Values.xgt.livenessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.xgt.livenessProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.xgt.livenessProbe.failureThreshold }}
+          {{- with .Values.xgt.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - name: xgt-config
+              mountPath: /conf/xgtd.conf
+              subPath: xgtd.conf
+            - name: xgt-config
+              mountPath: /conf/audit.xml
+              subPath: audit.xml
+            - name: xgt-config
+              mountPath: /conf/grouplabel.csv
+              subPath: grouplabel.csv
+            - name: xgt-config
+              mountPath: /conf/label.csv
+              subPath: label.csv
+            {{- if .Values.xgt.config.proxyList }}
+            - name: xgt-config
+              mountPath: /conf/proxy_list
+              subPath: proxy_list
+            {{- end }}
+            - name: xgt-data
+              mountPath: /data
+            - name: xgt-log
+              mountPath: /log
+            {{- if .Values.xgt.ssl.enabled }}
+            - name: xgt-tls
+              mountPath: /conf/ssl
+              readOnly: true
+            {{- end }}
+            {{- if or .Values.xgt.license.existingSecret .Values.xgt.license.data }}
+            - name: xgt-license
+              mountPath: /license/xgtd.lic
+              subPath: xgtd.lic
+              readOnly: true
+            {{- end }}
+            {{- if .Values.xgt.ldap.enabled }}
+            - name: sssd-config
+              mountPath: /etc/sssd-config
+              readOnly: true
+            {{- end }}
+            {{- if or .Values.backend.oidc.caCert .Values.backend.oidc.caCertExistingSecret }}
+            - name: oidc-ca-cert
+              mountPath: /etc/ssl/certs/oidc-ca.pem
+              subPath: oidc-ca.pem
+              readOnly: true
+            {{- end }}
+      {{- with .Values.xgt.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.xgt.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.xgt.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      restartPolicy: Always
+      volumes:
+        - name: xgt-config
+          configMap:
+            name: {{ include "rocketgraph.fullname.xgt" . }}-config
+        - name: xgt-data
+          persistentVolumeClaim:
+            claimName: {{ .Values.xgt.persistence.data.existingClaim | default (printf "%s-xgt-data" .Release.Name) }}
+        - name: xgt-log
+          persistentVolumeClaim:
+            claimName: {{ .Values.xgt.persistence.log.existingClaim | default (printf "%s-xgt-log" .Release.Name) }}
+        {{- if .Values.xgt.ssl.enabled }}
+        - name: xgt-tls
+          secret:
+            secretName: {{ include "rocketgraph.xgtTlsSecret" . }}
+            items:
+              - key: server.cert.pem
+                path: certs/server.cert.pem
+              - key: server.key.pem
+                path: private/server.key.pem
+                mode: 0400
+              {{- if and .Values.xgt.ssl.mtls (or .Values.xgt.ssl.caCert .Values.xgt.ssl.existingSecret) }}
+              - key: ca-chain.cert.pem
+                path: certs/ca-chain.cert.pem
+              {{- end }}
+        {{- end }}
+        {{- if or .Values.xgt.license.existingSecret .Values.xgt.license.data }}
+        - name: xgt-license
+          secret:
+            secretName: {{ include "rocketgraph.xgtLicenseSecret" . }}
+        {{- end }}
+        {{- if .Values.xgt.ldap.enabled }}
+        - name: sssd-config
+          secret:
+            secretName: {{ include "rocketgraph.xgtLdapSecret" . }}
+            items:
+              - key: sssd.conf
+                path: sssd.conf
+                mode: 0600
+        {{- end }}
+        {{- if or .Values.backend.oidc.caCert .Values.backend.oidc.caCertExistingSecret }}
+        - name: oidc-ca-cert
+          secret:
+            secretName: {{ include "rocketgraph.backendOidcCaSecret" . }}
+        {{- end }}
+{{- end }}

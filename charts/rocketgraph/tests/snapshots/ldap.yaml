@@ -1,0 +1,608 @@
+---
+# Source: rocketgraph/templates/networkpolicy.yaml
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: test-release-mongodb-restrict-access
+  labels:
+    helm.sh/chart: rocketgraph-0.1.0
+    app.kubernetes.io/name: rocketgraph
+    app.kubernetes.io/version: "2.6.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/instance: test-release
+spec:
+  podSelector:
+    matchLabels:
+      app: mongodb
+      app.kubernetes.io/instance: test-release
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: backend
+              app.kubernetes.io/instance: test-release
+      ports:
+        - port: 27017
+          protocol: TCP
+---
+# Source: rocketgraph/templates/xgt-ldap-secret.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: test-release-xgt-ldap
+  labels:
+    app: xgt
+    helm.sh/chart: rocketgraph-0.1.0
+    app.kubernetes.io/name: rocketgraph
+    app.kubernetes.io/version: "2.6.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/instance: test-release
+type: Opaque
+stringData:
+  sssd.conf: |
+    [sssd]
+    services = nss, pam
+    domains = LDAP
+
+    [pam]
+    pam_trusted_users = 0
+
+    [domain/LDAP]
+    id_provider = ldap
+    auth_provider = ldap
+    ldap_uri = ldap://ldap.example.org
+    ldap_search_base = dc=example,dc=org
+    ldap_default_bind_dn = cn=admin,dc=example,dc=org
+    ldap_default_authtok = secret
+---
+# Source: rocketgraph/templates/backend-odbc-configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test-release-backend-odbc-config
+  labels:
+    app: backend
+    helm.sh/chart: rocketgraph-0.1.0
+    app.kubernetes.io/name: rocketgraph
+    app.kubernetes.io/version: "2.6.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/instance: test-release
+data:
+  odbcinst.ini: |
+    [MariaDB Unicode]
+    Driver=libmaodbc.so
+    Description=MariaDB Connector/ODBC(Unicode)
+    Threading=0
+    UsageCount=1
+
+    [SQLite]
+    Description=SQLite ODBC Driver
+    Driver=libsqliteodbc.so
+    Setup=libsqliteodbc.so
+    UsageCount=1
+
+    [SQLite3]
+    Description=SQLite3 ODBC Driver
+    Driver=libsqlite3odbc.so
+    Setup=libsqlite3odbc.so
+    UsageCount=1
+
+    [PostgreSQL ANSI]
+    Description=PostgreSQL ODBC driver (ANSI version)
+    Driver=psqlodbca.so
+    Setup=libodbcpsqlS.so
+    Debug=0
+    CommLog=1
+    UsageCount=1
+
+    [PostgreSQL Unicode]
+    Description=PostgreSQL ODBC driver (Unicode version)
+    Driver=psqlodbcw.so
+    Setup=libodbcpsqlS.so
+    Debug=0
+    CommLog=1
+    UsageCount=1
+---
+# Source: rocketgraph/templates/xgt-configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test-release-xgt-config
+  labels:
+    app: xgt
+    helm.sh/chart: rocketgraph-0.1.0
+    app.kubernetes.io/name: rocketgraph
+    app.kubernetes.io/version: "2.6.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/instance: test-release
+data:
+  audit.xml: |
+    <?xml version="1.0" encoding="UTF-8"?>
+    <log4j:configuration xmlns:log4j="http://jakarta.apache.org/log4j/">
+
+        <root>
+            <level value="OFF"/>
+        </root>
+
+        <appender name="auditJson" class="org.apache.log4j.RollingFileAppender">
+            <param name="File" value="/log/audit.log"/>
+            <param name="MaxFileSize" value="10MB"/>
+            <param name="MaxBackupIndex" value="10"/>
+            <layout class="JSONLayout"/>
+        </appender>
+
+        <logger name="xgtdaudit" additivity="false">
+            <level value="INFO"/>
+            <appender-ref ref="auditJson"/>
+        </logger>
+
+    </log4j:configuration>
+  grouplabel.csv: |
+    group,label
+    xgtd,xgtadmin
+  label.csv: |
+    label
+    xgtadmin
+  xgtd.conf: |
+    {
+      "audit.config_file": "/conf/audit.xml",
+      "license.location": "6200@localhost:/conf/licenses/xgtd.lic",
+      "logging.filepath": "/log",
+      "logging.fileprefix": "xgtd",
+      "logging.log_to_console": "true",
+      "security.adminlabel": "xgtadmin",
+      "security.grouplabelfile": "/conf/grouplabel.csv",
+      "security.labelfile": "/conf/label.csv",
+      "system.ssl_root_dir": "/conf/ssl",
+      "system.usemtls": "false",
+      "system.usessl": "false"
+    }
+---
+# Source: rocketgraph/templates/mongodb-pvc.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: test-release-mongodb-data
+  labels:
+    app: mongodb
+    helm.sh/chart: rocketgraph-0.1.0
+    app.kubernetes.io/name: rocketgraph
+    app.kubernetes.io/version: "2.6.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/instance: test-release
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+# Source: rocketgraph/templates/xgt-pvc.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: test-release-xgt-data
+  labels:
+    app: xgt
+    helm.sh/chart: rocketgraph-0.1.0
+    app.kubernetes.io/name: rocketgraph
+    app.kubernetes.io/version: "2.6.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/instance: test-release
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+---
+# Source: rocketgraph/templates/xgt-pvc.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: test-release-xgt-log
+  labels:
+    app: xgt
+    helm.sh/chart: rocketgraph-0.1.0
+    app.kubernetes.io/name: rocketgraph
+    app.kubernetes.io/version: "2.6.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/instance: test-release
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+# Source: rocketgraph/templates/backend-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: test-release-backend
+  labels:
+    app: backend
+    helm.sh/chart: rocketgraph-0.1.0
+    app.kubernetes.io/name: rocketgraph
+    app.kubernetes.io/version: "2.6.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/instance: test-release
+spec:
+  type: ClusterIP
+  sessionAffinity: ClientIP
+  ports:
+    - name: http
+      port: 5000
+      targetPort: 5000
+  selector:
+    app: backend
+    app.kubernetes.io/instance: test-release
+---
+# Source: rocketgraph/templates/frontend-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: test-release-frontend
+  labels:
+    app: frontend
+    helm.sh/chart: rocketgraph-0.1.0
+    app.kubernetes.io/name: rocketgraph
+    app.kubernetes.io/version: "2.6.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/instance: test-release
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 80
+      targetPort: 80
+    - name: https
+      port: 443
+      targetPort: 443
+  selector:
+    app: frontend
+    app.kubernetes.io/instance: test-release
+---
+# Source: rocketgraph/templates/mongodb-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: test-release-mongodb
+  labels:
+    app: mongodb
+    helm.sh/chart: rocketgraph-0.1.0
+    app.kubernetes.io/name: rocketgraph
+    app.kubernetes.io/version: "2.6.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/instance: test-release
+spec:
+  type: ClusterIP
+  ports:
+    - name: mongodb
+      port: 27017
+      targetPort: 27017
+  selector:
+    app: mongodb
+    app.kubernetes.io/instance: test-release
+---
+# Source: rocketgraph/templates/xgt-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: test-release-xgt
+  labels:
+    app: xgt
+    helm.sh/chart: rocketgraph-0.1.0
+    app.kubernetes.io/name: rocketgraph
+    app.kubernetes.io/version: "2.6.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/instance: test-release
+spec:
+  type: ClusterIP
+  sessionAffinity: ClientIP
+  ports:
+    - name: xgt
+      port: 4367
+      targetPort: 4367
+  selector:
+    app: xgt
+    app.kubernetes.io/instance: test-release
+---
+# Source: rocketgraph/templates/backend-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: test-release-backend
+  labels:
+    app: backend
+    helm.sh/chart: rocketgraph-0.1.0
+    app.kubernetes.io/name: rocketgraph
+    app.kubernetes.io/version: "2.6.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/instance: test-release
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: backend
+      app.kubernetes.io/instance: test-release
+  template:
+    metadata:
+      labels:
+        app: backend
+        app.kubernetes.io/instance: test-release
+      annotations:
+        checksum/odbc-config: a31521a0c3e811ebe09e9c63d4639d9e828db296e5e129f718d4b88c3cc07253
+    spec:
+      containers:
+        - name: backend
+          image: "docker.io/rocketgraph/mission-control-backend:2.6.0"
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 5000
+              protocol: TCP
+          env:
+            - name: MC_MONGO_URI
+              value: "mongodb://test-release-mongodb:27017"
+            - name: MC_DEFAULT_XGT_HOST
+              value: "test-release-xgt"
+            - name: MC_DEFAULT_XGT_PORT
+              value: ""
+            - name: MC_SESSION_TTL
+              value: ""
+            - name: XGT_SERVER_CN
+              value: ""
+            - name: XGT_AUTH_TYPES
+              value: "['BasicAuth', 'FilePKIAuth', 'PKIAuth']"
+            - name: LD_LIBRARY_PATH
+              value: "/odbc"
+            - name: MC_PORT
+              value: "80"
+            - name: MC_SSL_PORT
+              value: "443"
+            - name: MC_XGT_ALLOWED_HOSTS
+              value: "test-release-xgt:4367"
+          startupProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 30
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            periodSeconds: 60
+            timeoutSeconds: 5
+            failureThreshold: 5
+          volumeMounts:
+            - name: odbc-config
+              mountPath: /odbc
+      restartPolicy: Always
+      volumes:
+        - name: odbc-config
+          configMap:
+            name: test-release-backend-odbc-config
+---
+# Source: rocketgraph/templates/frontend-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: test-release-frontend
+  labels:
+    app: frontend
+    helm.sh/chart: rocketgraph-0.1.0
+    app.kubernetes.io/name: rocketgraph
+    app.kubernetes.io/version: "2.6.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/instance: test-release
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: frontend
+      app.kubernetes.io/instance: test-release
+  template:
+    metadata:
+      labels:
+        app: frontend
+        app.kubernetes.io/instance: test-release
+    spec:
+      containers:
+        - name: frontend
+          image: "docker.io/rocketgraph/mission-control-frontend:2.6.0"
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: BACKEND_HOST
+              value: "test-release-backend"
+            - name: BACKEND_PORT
+              value: "5000"
+          ports:
+            - name: http
+              containerPort: 80
+              protocol: TCP
+            - name: https
+              containerPort: 443
+              protocol: TCP
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+      restartPolicy: Always
+---
+# Source: rocketgraph/templates/mongodb-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: test-release-mongodb
+  labels:
+    app: mongodb
+    helm.sh/chart: rocketgraph-0.1.0
+    app.kubernetes.io/name: rocketgraph
+    app.kubernetes.io/version: "2.6.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/instance: test-release
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mongodb
+      app.kubernetes.io/instance: test-release
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: mongodb
+        app.kubernetes.io/instance: test-release
+    spec:
+      containers:
+        - name: mongodb
+          image: "docker.io/library/mongo:latest"
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: mongodb
+              containerPort: 27017
+              protocol: TCP
+          readinessProbe:
+            exec:
+              command:
+                - mongosh
+                - --eval
+                - "db.adminCommand('ping')"
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            exec:
+              command:
+                - mongosh
+                - --eval
+                - "db.adminCommand('ping')"
+            initialDelaySeconds: 10
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+          volumeMounts:
+            - name: mongodb-data
+              mountPath: /data/db
+      restartPolicy: Always
+      volumes:
+        - name: mongodb-data
+          persistentVolumeClaim:
+            claimName: test-release-mongodb-data
+---
+# Source: rocketgraph/templates/xgt-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: test-release-xgt
+  labels:
+    app: xgt
+    helm.sh/chart: rocketgraph-0.1.0
+    app.kubernetes.io/name: rocketgraph
+    app.kubernetes.io/version: "2.6.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/instance: test-release
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: xgt
+      app.kubernetes.io/instance: test-release
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: xgt
+        app.kubernetes.io/instance: test-release
+      annotations:
+        checksum/config: 024f796f510c7fa02b89012a13f9a998acbd25860be2079a3404078807c15d04
+    spec:
+      containers:
+        - name: xgt
+          image: "docker.io/rocketgraph/xgt:2.6.0"
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: xgt
+              containerPort: 4367
+              protocol: TCP
+          startupProbe:
+            grpc:
+              port: 4366
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 30
+          readinessProbe:
+            grpc:
+              port: 4366
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            grpc:
+              port: 4366
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+          volumeMounts:
+            - name: xgt-config
+              mountPath: /conf/xgtd.conf
+              subPath: xgtd.conf
+            - name: xgt-config
+              mountPath: /conf/audit.xml
+              subPath: audit.xml
+            - name: xgt-config
+              mountPath: /conf/grouplabel.csv
+              subPath: grouplabel.csv
+            - name: xgt-config
+              mountPath: /conf/label.csv
+              subPath: label.csv
+            - name: xgt-data
+              mountPath: /data
+            - name: xgt-log
+              mountPath: /log
+            - name: sssd-config
+              mountPath: /etc/sssd-config
+              readOnly: true
+      restartPolicy: Always
+      volumes:
+        - name: xgt-config
+          configMap:
+            name: test-release-xgt-config
+        - name: xgt-data
+          persistentVolumeClaim:
+            claimName: test-release-xgt-data
+        - name: xgt-log
+          persistentVolumeClaim:
+            claimName: test-release-xgt-log
+        - name: sssd-config
+          secret:
+            secretName: test-release-xgt-ldap
+            items:
+              - key: sssd.conf
+                path: sssd.conf
+                mode: 0600

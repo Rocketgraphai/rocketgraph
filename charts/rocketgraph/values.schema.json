@@ -1,0 +1,1280 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "imagePullSecrets": {
+      "type": "array",
+      "description": "List of image pull secret references for private registries",
+      "default": [],
+      "items": {
+        "type": "object"
+      }
+    },
+    "imageVersions": {
+      "type": "object",
+      "description": "Per-component image version overrides. Takes precedence over each component's image.tag. Falls back to Chart.appVersion if both are empty.",
+      "additionalProperties": false,
+      "properties": {
+        "frontend": { "type": "string", "default": "" },
+        "backend": { "type": "string", "default": "" },
+        "xgt": { "type": "string", "default": "" }
+      }
+    },
+    "frontend": {
+      "type": "object",
+      "description": "Frontend component configuration",
+      "additionalProperties": false,
+      "properties": {
+        "image": {
+          "type": "object",
+          "description": "Container image settings for the frontend",
+          "additionalProperties": false,
+          "properties": {
+            "repository": {
+              "type": "string",
+              "description": "Container image repository",
+              "default": "docker.io/rocketgraph/mission-control-frontend"
+            },
+            "tag": {
+              "type": "string",
+              "description": "Container image tag (defaults to Chart.appVersion)",
+              "default": ""
+            },
+            "pullPolicy": {
+              "type": "string",
+              "description": "Image pull policy",
+              "enum": ["Always", "IfNotPresent", "Never"],
+              "default": "IfNotPresent"
+            }
+          }
+        },
+        "replicas": {
+          "type": "integer",
+          "description": "Number of frontend replicas",
+          "default": 1
+        },
+        "resources": {
+          "type": "object",
+          "description": "Kubernetes resource requests and limits",
+          "additionalProperties": true,
+          "default": {}
+        },
+        "podDisruptionBudget": {
+          "type": "object",
+          "description": "PodDisruptionBudget configuration for the frontend",
+          "additionalProperties": true,
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Enable PodDisruptionBudget for this component",
+              "default": false
+            },
+            "minAvailable": {
+              "type": ["integer", "string"],
+              "description": "Minimum number of pods that must be available (integer or percentage e.g. '50%'). Default of 1 blocks node drains on single-replica deployments — consider 0 or use maxUnavailable instead."
+            },
+            "maxUnavailable": {
+              "type": ["integer", "string"],
+              "description": "Maximum number of pods that can be unavailable (integer or percentage string e.g. '50%')"
+            }
+          }
+        },
+        "podSecurityContext": {
+          "type": "object",
+          "description": "Pod-level security context",
+          "additionalProperties": true,
+          "default": {}
+        },
+        "containerSecurityContext": {
+          "type": "object",
+          "description": "Container-level security context",
+          "additionalProperties": true,
+          "default": {}
+        },
+        "podAnnotations": {
+          "type": "object",
+          "description": "Additional annotations for frontend pods",
+          "additionalProperties": true,
+          "default": {}
+        },
+        "nodeSelector": {
+          "type": "object",
+          "description": "Node selector labels for pod scheduling",
+          "additionalProperties": true,
+          "default": {}
+        },
+        "tolerations": {
+          "type": "array",
+          "description": "Tolerations for pod scheduling",
+          "default": [],
+          "items": {
+            "type": "object"
+          }
+        },
+        "affinity": {
+          "type": "object",
+          "description": "Affinity rules for pod scheduling",
+          "additionalProperties": true,
+          "default": {}
+        },
+        "service": {
+          "type": "object",
+          "description": "Kubernetes Service configuration for the frontend",
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "type": "string",
+              "description": "Kubernetes service type",
+              "enum": ["ClusterIP", "NodePort", "LoadBalancer"],
+              "default": "ClusterIP"
+            },
+            "httpPort": {
+              "type": "integer",
+              "description": "HTTP port for the frontend service",
+              "default": 80
+            },
+            "httpsPort": {
+              "type": "integer",
+              "description": "HTTPS port for the frontend service",
+              "default": 443
+            },
+            "annotations": {
+              "type": "object",
+              "description": "Annotations for the frontend service",
+              "additionalProperties": true,
+              "default": {}
+            }
+          }
+        },
+        "readinessProbe": {
+          "type": "object",
+          "description": "Readiness probe configuration for the frontend",
+          "additionalProperties": false,
+          "properties": {
+            "periodSeconds": {
+              "type": "integer",
+              "description": "Seconds between probe checks",
+              "default": 10
+            },
+            "timeoutSeconds": {
+              "type": "integer",
+              "description": "Seconds before the probe times out",
+              "default": 5
+            },
+            "failureThreshold": {
+              "type": "integer",
+              "description": "Number of consecutive failures before marking unhealthy",
+              "default": 3
+            }
+          }
+        },
+        "livenessProbe": {
+          "type": "object",
+          "description": "Liveness probe configuration for the frontend",
+          "additionalProperties": false,
+          "properties": {
+            "initialDelaySeconds": {
+              "type": "integer",
+              "description": "Seconds to wait before the first probe",
+              "default": 10
+            },
+            "periodSeconds": {
+              "type": "integer",
+              "description": "Seconds between probe checks",
+              "default": 30
+            },
+            "timeoutSeconds": {
+              "type": "integer",
+              "description": "Seconds before the probe times out",
+              "default": 5
+            },
+            "failureThreshold": {
+              "type": "integer",
+              "description": "Number of consecutive failures before restarting the container",
+              "default": 3
+            }
+          }
+        },
+        "tls": {
+          "type": "object",
+          "description": "TLS certificate configuration for the frontend",
+          "additionalProperties": false,
+          "properties": {
+            "existingSecret": {
+              "type": "string",
+              "description": "Name of an existing Secret containing keys 'public.pem', 'private.pem', and optionally 'chain.pem'",
+              "default": ""
+            },
+            "publicCert": {
+              "type": "string",
+              "description": "PEM-encoded public certificate",
+              "default": ""
+            },
+            "privateKey": {
+              "type": "string",
+              "description": "PEM-encoded private key",
+              "default": ""
+            },
+            "certChain": {
+              "type": "string",
+              "description": "PEM-encoded certificate chain (intermediate and root CA certificates)",
+              "default": ""
+            },
+            "mtls": {
+              "type": "boolean",
+              "description": "Enable browser mTLS; mounts chain.pem from existingSecret or certChain as the CA for validating browser client certificates",
+              "default": false
+            }
+          }
+        }
+      }
+    },
+    "backend": {
+      "type": "object",
+      "description": "Backend component configuration",
+      "additionalProperties": false,
+      "properties": {
+        "image": {
+          "type": "object",
+          "description": "Container image settings for the backend",
+          "additionalProperties": false,
+          "properties": {
+            "repository": {
+              "type": "string",
+              "description": "Container image repository",
+              "default": "docker.io/rocketgraph/mission-control-backend"
+            },
+            "tag": {
+              "type": "string",
+              "description": "Container image tag (defaults to Chart.appVersion)",
+              "default": ""
+            },
+            "pullPolicy": {
+              "type": "string",
+              "description": "Image pull policy",
+              "enum": ["Always", "IfNotPresent", "Never"],
+              "default": "IfNotPresent"
+            }
+          }
+        },
+        "replicas": {
+          "type": "integer",
+          "description": "Number of backend replicas",
+          "default": 1
+        },
+        "autoscaling": {
+          "type": "object",
+          "description": "Controls ownership of replica count for backend",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "When true, omit Deployment.spec.replicas so an HPA or kubectl scale can manage replicas",
+              "default": false
+            }
+          }
+        },
+        "resources": {
+          "type": "object",
+          "description": "Kubernetes resource requests and limits",
+          "additionalProperties": true,
+          "default": {}
+        },
+        "podDisruptionBudget": {
+          "type": "object",
+          "description": "PodDisruptionBudget configuration for the backend",
+          "additionalProperties": true,
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Enable PodDisruptionBudget for this component",
+              "default": false
+            },
+            "minAvailable": {
+              "type": ["integer", "string"],
+              "description": "Minimum number of pods that must be available (integer or percentage e.g. '50%'). Default of 1 blocks node drains on single-replica deployments — consider 0 or use maxUnavailable instead."
+            },
+            "maxUnavailable": {
+              "type": ["integer", "string"],
+              "description": "Maximum number of pods that can be unavailable (integer or percentage string e.g. '50%')"
+            }
+          }
+        },
+        "podSecurityContext": {
+          "type": "object",
+          "description": "Pod-level security context",
+          "additionalProperties": true,
+          "default": {}
+        },
+        "containerSecurityContext": {
+          "type": "object",
+          "description": "Container-level security context",
+          "additionalProperties": true,
+          "default": {}
+        },
+        "podAnnotations": {
+          "type": "object",
+          "description": "Additional annotations for backend pods",
+          "additionalProperties": true,
+          "default": {}
+        },
+        "nodeSelector": {
+          "type": "object",
+          "description": "Node selector labels for pod scheduling",
+          "additionalProperties": true,
+          "default": {}
+        },
+        "tolerations": {
+          "type": "array",
+          "description": "Tolerations for pod scheduling",
+          "default": [],
+          "items": {
+            "type": "object"
+          }
+        },
+        "affinity": {
+          "type": "object",
+          "description": "Affinity rules for pod scheduling",
+          "additionalProperties": true,
+          "default": {}
+        },
+        "service": {
+          "type": "object",
+          "description": "Kubernetes Service configuration for the backend",
+          "additionalProperties": false,
+          "properties": {
+            "annotations": {
+              "type": "object",
+              "description": "Annotations for the backend service",
+              "additionalProperties": true,
+              "default": {}
+            }
+          }
+        },
+        "startupProbe": {
+          "type": "object",
+          "description": "Startup probe configuration for the backend",
+          "additionalProperties": false,
+          "properties": {
+            "periodSeconds": {
+              "type": "integer",
+              "description": "Seconds between probe checks",
+              "default": 10
+            },
+            "timeoutSeconds": {
+              "type": "integer",
+              "description": "Seconds before the probe times out",
+              "default": 5
+            },
+            "failureThreshold": {
+              "type": "integer",
+              "description": "Number of consecutive failures before marking startup failed",
+              "default": 30
+            }
+          }
+        },
+        "readinessProbe": {
+          "type": "object",
+          "description": "Readiness probe configuration for the backend",
+          "additionalProperties": false,
+          "properties": {
+            "periodSeconds": {
+              "type": "integer",
+              "description": "Seconds between probe checks",
+              "default": 10
+            },
+            "timeoutSeconds": {
+              "type": "integer",
+              "description": "Seconds before the probe times out",
+              "default": 5
+            },
+            "failureThreshold": {
+              "type": "integer",
+              "description": "Number of consecutive failures before marking unhealthy",
+              "default": 3
+            }
+          }
+        },
+        "livenessProbe": {
+          "type": "object",
+          "description": "Liveness probe configuration for the backend",
+          "additionalProperties": false,
+          "properties": {
+            "periodSeconds": {
+              "type": "integer",
+              "description": "Seconds between probe checks",
+              "default": 60
+            },
+            "timeoutSeconds": {
+              "type": "integer",
+              "description": "Seconds before the probe times out",
+              "default": 5
+            },
+            "failureThreshold": {
+              "type": "integer",
+              "description": "Number of consecutive failures before restarting the container",
+              "default": 5
+            }
+          }
+        },
+        "env": {
+          "type": "object",
+          "description": "Environment variables for the backend container",
+          "additionalProperties": false,
+          "properties": {
+            "MC_DEFAULT_XGT_HOST": {
+              "type": "string",
+              "description": "Default xGT server hostname for new connections",
+              "default": ""
+            },
+            "MC_DEFAULT_XGT_PORT": {
+              "type": "string",
+              "description": "Default xGT server port for new connections",
+              "default": ""
+            },
+            "MC_SESSION_TTL": {
+              "type": "string",
+              "description": "Session time-to-live duration",
+              "default": ""
+            },
+            "XGT_SERVER_CN": {
+              "type": "string",
+              "description": "Expected Common Name (CN) of the xGT server certificate",
+              "default": ""
+            },
+            "XGT_AUTH_TYPES": {
+              "type": "string",
+              "description": "Python list literal of authentication types supported by xGT",
+              "default": "['BasicAuth', 'FilePKIAuth', 'PKIAuth']"
+            },
+            "MC_ODBC_LIBRARY_PATH": {
+              "type": "string",
+              "description": "Path to the ODBC shared library (libodbc.so)",
+              "default": ""
+            },
+            "MC_PORT": {
+              "type": ["string", "integer"],
+              "description": "Frontend HTTP port passed to the backend for OIDC redirect URI construction. Defaults to frontend.service.httpPort.",
+              "default": ""
+            },
+            "MC_SSL_PORT": {
+              "type": ["string", "integer"],
+              "description": "Frontend HTTPS port passed to the backend for OIDC redirect URI construction. Defaults to frontend.service.httpsPort.",
+              "default": ""
+            }
+          }
+        },
+        "tls": {
+          "type": "object",
+          "description": "TLS certificate configuration for the backend",
+          "additionalProperties": false,
+          "properties": {
+            "existingSecret": {
+              "type": "string",
+              "description": "Name of an existing Secret containing key 'xgt-server.pem'. For mTLS, also include 'proxy-client-cert.pem' and 'proxy-client-key.pem' and set the corresponding inline values to enable mounting.",
+              "default": ""
+            },
+            "xgtServerCert": {
+              "type": "string",
+              "description": "PEM-encoded xGT server certificate for TLS verification",
+              "default": ""
+            },
+            "proxyClientCert": {
+              "type": "string",
+              "description": "PEM-encoded proxy client certificate for mTLS to xGT",
+              "default": ""
+            },
+            "proxyClientKey": {
+              "type": "string",
+              "description": "PEM-encoded proxy client private key for mTLS to xGT",
+              "default": ""
+            },
+            "mtls": {
+              "type": "boolean",
+              "description": "Enable mTLS for backend connections to xGT. Requires either existingSecret to contain the client cert/key, or for them to be provided inline",
+              "default": false
+            }
+          }
+        },
+        "siteConfig": {
+          "type": "object",
+          "description": "Site configuration files mounted into the backend",
+          "additionalProperties": false,
+          "properties": {
+            "yml": {
+              "type": "string",
+              "description": "YAML site configuration content",
+              "default": ""
+            },
+            "py": {
+              "type": "string",
+              "description": "Python site configuration content",
+              "default": ""
+            }
+          }
+        },
+        "oidc": {
+          "type": "object",
+          "description": "OIDC authentication configuration for the backend",
+          "additionalProperties": false,
+          "properties": {
+            "issuer": {
+              "type": "string",
+              "description": "OIDC provider issuer URL",
+              "default": ""
+            },
+            "clientId": {
+              "type": "string",
+              "description": "OIDC client ID",
+              "default": ""
+            },
+            "clientSecret": {
+              "type": "string",
+              "description": "OIDC client secret (inline; creates a Secret). Use existingSecret in production.",
+              "default": ""
+            },
+            "existingSecret": {
+              "type": "string",
+              "description": "Name of an existing Secret containing key MC_OIDC_CLIENT_SECRET",
+              "default": ""
+            },
+            "scopes": {
+              "type": "string",
+              "description": "Space-separated OIDC scopes (e.g. 'openid profile email')",
+              "default": ""
+            },
+            "frontendUrl": {
+              "type": "string",
+              "description": "Public URL of the Mission Control frontend",
+              "default": ""
+            },
+            "redirectUri": {
+              "type": "string",
+              "description": "OIDC redirect URI (e.g. https://mc.example.com/api/login/oidc/callback)",
+              "default": ""
+            },
+            "allowedOrigins": {
+              "type": "string",
+              "description": "Comma-separated list of allowed origins for OIDC login",
+              "default": ""
+            },
+            "tlsVerify": {
+              "type": "string",
+              "description": "TLS verification for OIDC HTTP calls. 'true' uses the system CA bundle, 'false' disables verification, or a file path (e.g. /etc/ssl/certs/oidc-ca.pem) uses that file as the CA bundle.",
+              "default": ""
+            },
+            "caCert": {
+              "type": "string",
+              "description": "PEM-encoded CA certificate for verifying the OIDC provider's TLS cert (creates a Secret)",
+              "default": ""
+            },
+            "caCertExistingSecret": {
+              "type": "string",
+              "description": "Name of an existing Secret containing key oidc-ca.pem",
+              "default": ""
+            },
+            "xgtAllowedHosts": {
+              "type": "string",
+              "description": "Comma-separated host:port allowlist for xGT connections (SSRF prevention). Defaults to the internal xGT service when xgt.enabled=true. Empty when xgt.enabled=false — set explicitly when using an external xGT.",
+              "default": ""
+            }
+          }
+        },
+        "odbc": {
+          "type": "object",
+          "description": "ODBC driver volume configuration",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Enable mounting an ODBC driver volume",
+              "default": false
+            },
+            "existingClaim": {
+              "type": "string",
+              "description": "Name of an existing PersistentVolumeClaim for ODBC drivers",
+              "default": ""
+            },
+            "storageSize": {
+              "type": "string",
+              "description": "Storage size (e.g. 1Gi, 10Gi)",
+              "default": "1Gi"
+            },
+            "storageClassName": {
+              "type": "string",
+              "description": "Storage class name (empty for cluster default)",
+              "default": ""
+            }
+          }
+        },
+        "iaccess": {
+          "type": "object",
+          "description": "IBM i Access client volume configuration",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Enable mounting an IBM i Access client volume",
+              "default": false
+            },
+            "existingClaim": {
+              "type": "string",
+              "description": "Name of an existing PersistentVolumeClaim for IBM i Access client libraries",
+              "default": ""
+            },
+            "storageSize": {
+              "type": "string",
+              "description": "Storage size (e.g. 1Gi, 10Gi)",
+              "default": "1Gi"
+            },
+            "storageClassName": {
+              "type": "string",
+              "description": "Storage class name (empty for cluster default)",
+              "default": ""
+            }
+          }
+        }
+      }
+    },
+    "mongodb": {
+      "type": "object",
+      "description": "MongoDB component configuration",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Deploy MongoDB as part of the release. Set to false to use an external database.",
+          "default": true
+        },
+        "externalUri": {
+          "type": "string",
+          "description": "MongoDB connection URI when mongodb.enabled is false",
+          "default": ""
+        },
+        "externalUriSecret": {
+          "type": "string",
+          "description": "Name of an existing Secret containing key 'mongodb-uri' (preferred over externalUri to avoid credential exposure)",
+          "default": ""
+        },
+        "image": {
+          "type": "object",
+          "description": "Container image settings for MongoDB",
+          "additionalProperties": false,
+          "properties": {
+            "repository": {
+              "type": "string",
+              "description": "Container image repository",
+              "default": "docker.io/library/mongo"
+            },
+            "tag": {
+              "type": "string",
+              "description": "Container image tag (defaults to Chart.appVersion)",
+              "default": "latest"
+            },
+            "pullPolicy": {
+              "type": "string",
+              "description": "Image pull policy",
+              "enum": ["Always", "IfNotPresent", "Never"],
+              "default": "IfNotPresent"
+            }
+          }
+        },
+        "replicas": {
+          "type": "integer",
+          "description": "Number of MongoDB replicas",
+          "default": 1
+        },
+        "resources": {
+          "type": "object",
+          "description": "Kubernetes resource requests and limits",
+          "additionalProperties": true,
+          "default": {}
+        },
+        "podDisruptionBudget": {
+          "type": "object",
+          "description": "PodDisruptionBudget configuration for MongoDB",
+          "additionalProperties": true,
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Enable PodDisruptionBudget for this component",
+              "default": false
+            },
+            "minAvailable": {
+              "type": ["integer", "string"],
+              "description": "Minimum number of pods that must be available (integer or percentage e.g. '50%'). Default of 1 blocks node drains on single-replica deployments — consider 0 or use maxUnavailable instead."
+            },
+            "maxUnavailable": {
+              "type": ["integer", "string"],
+              "description": "Maximum number of pods that can be unavailable (integer or percentage string e.g. '50%')"
+            }
+          }
+        },
+        "podSecurityContext": {
+          "type": "object",
+          "description": "Pod-level security context",
+          "additionalProperties": true,
+          "default": {}
+        },
+        "containerSecurityContext": {
+          "type": "object",
+          "description": "Container-level security context",
+          "additionalProperties": true,
+          "default": {}
+        },
+        "podAnnotations": {
+          "type": "object",
+          "description": "Additional annotations for MongoDB pods",
+          "additionalProperties": true,
+          "default": {}
+        },
+        "nodeSelector": {
+          "type": "object",
+          "description": "Node selector labels for pod scheduling",
+          "additionalProperties": true,
+          "default": {}
+        },
+        "tolerations": {
+          "type": "array",
+          "description": "Tolerations for pod scheduling",
+          "default": [],
+          "items": {
+            "type": "object"
+          }
+        },
+        "affinity": {
+          "type": "object",
+          "description": "Affinity rules for pod scheduling",
+          "additionalProperties": true,
+          "default": {}
+        },
+        "service": {
+          "type": "object",
+          "description": "Kubernetes Service configuration for MongoDB",
+          "additionalProperties": false,
+          "properties": {
+            "annotations": {
+              "type": "object",
+              "description": "Annotations for the MongoDB service",
+              "additionalProperties": true,
+              "default": {}
+            }
+          }
+        },
+        "readinessProbe": {
+          "type": "object",
+          "description": "Readiness probe configuration for MongoDB",
+          "additionalProperties": false,
+          "properties": {
+            "periodSeconds": {
+              "type": "integer",
+              "description": "Seconds between probe checks",
+              "default": 10
+            },
+            "timeoutSeconds": {
+              "type": "integer",
+              "description": "Seconds before the probe times out",
+              "default": 5
+            },
+            "failureThreshold": {
+              "type": "integer",
+              "description": "Number of consecutive failures before marking unhealthy",
+              "default": 3
+            }
+          }
+        },
+        "livenessProbe": {
+          "type": "object",
+          "description": "Liveness probe configuration for MongoDB",
+          "additionalProperties": false,
+          "properties": {
+            "initialDelaySeconds": {
+              "type": "integer",
+              "description": "Seconds to wait before the first probe",
+              "default": 10
+            },
+            "periodSeconds": {
+              "type": "integer",
+              "description": "Seconds between probe checks",
+              "default": 30
+            },
+            "timeoutSeconds": {
+              "type": "integer",
+              "description": "Seconds before the probe times out",
+              "default": 5
+            },
+            "failureThreshold": {
+              "type": "integer",
+              "description": "Number of consecutive failures before restarting the container",
+              "default": 3
+            }
+          }
+        },
+        "auth": {
+          "type": "object",
+          "description": "MongoDB authentication configuration",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Enable MongoDB authentication",
+              "default": false
+            },
+            "existingSecret": {
+              "type": "string",
+              "description": "Name of an existing Secret containing keys 'mongodb-root-username' and 'mongodb-root-password'",
+              "default": ""
+            },
+            "rootUsername": {
+              "type": "string",
+              "description": "MongoDB root username (ignored if existingSecret is set)",
+              "default": ""
+            },
+            "rootPassword": {
+              "type": "string",
+              "description": "MongoDB root password (ignored if existingSecret is set)",
+              "default": ""
+            }
+          }
+        },
+        "persistence": {
+          "type": "object",
+          "description": "Persistent storage configuration for MongoDB data",
+          "additionalProperties": false,
+          "properties": {
+            "size": {
+              "type": "string",
+              "description": "Storage size (e.g. 1Gi, 10Gi)",
+              "default": "1Gi"
+            },
+            "storageClassName": {
+              "type": "string",
+              "description": "Storage class name (empty for cluster default)",
+              "default": ""
+            },
+            "existingClaim": {
+              "type": "string",
+              "description": "Name of an existing PersistentVolumeClaim to use instead of creating one",
+              "default": ""
+            }
+          }
+        }
+      }
+    },
+    "xgt": {
+      "type": "object",
+      "description": "xGT server component configuration",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Deploy xGT as part of the release. Set to false to use an external xGT server.",
+          "default": true
+        },
+        "image": {
+          "type": "object",
+          "description": "Container image settings for xGT",
+          "additionalProperties": false,
+          "properties": {
+            "repository": {
+              "type": "string",
+              "description": "Container image repository",
+              "default": "docker.io/rocketgraph/xgt"
+            },
+            "tag": {
+              "type": "string",
+              "description": "Container image tag (defaults to Chart.appVersion)",
+              "default": ""
+            },
+            "pullPolicy": {
+              "type": "string",
+              "description": "Image pull policy",
+              "enum": ["Always", "IfNotPresent", "Never"],
+              "default": "IfNotPresent"
+            }
+          }
+        },
+        "replicas": {
+          "type": "integer",
+          "description": "Number of xGT replicas",
+          "default": 1
+        },
+        "resources": {
+          "type": "object",
+          "description": "Kubernetes resource requests and limits",
+          "additionalProperties": true,
+          "default": {}
+        },
+        "podDisruptionBudget": {
+          "type": "object",
+          "description": "PodDisruptionBudget configuration for xGT",
+          "additionalProperties": true,
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Enable PodDisruptionBudget for this component",
+              "default": false
+            },
+            "minAvailable": {
+              "type": ["integer", "string"],
+              "description": "Minimum number of pods that must be available (integer or percentage e.g. '50%'). Default of 1 blocks node drains on single-replica deployments — consider 0 or use maxUnavailable instead."
+            },
+            "maxUnavailable": {
+              "type": ["integer", "string"],
+              "description": "Maximum number of pods that can be unavailable (integer or percentage string e.g. '50%')"
+            }
+          }
+        },
+        "podSecurityContext": {
+          "type": "object",
+          "description": "Pod-level security context",
+          "additionalProperties": true,
+          "default": {}
+        },
+        "containerSecurityContext": {
+          "type": "object",
+          "description": "Container-level security context",
+          "additionalProperties": true,
+          "default": {}
+        },
+        "podAnnotations": {
+          "type": "object",
+          "description": "Additional annotations for xGT pods",
+          "additionalProperties": true,
+          "default": {}
+        },
+        "nodeSelector": {
+          "type": "object",
+          "description": "Node selector labels for pod scheduling",
+          "additionalProperties": true,
+          "default": {}
+        },
+        "tolerations": {
+          "type": "array",
+          "description": "Tolerations for pod scheduling",
+          "default": [],
+          "items": {
+            "type": "object"
+          }
+        },
+        "affinity": {
+          "type": "object",
+          "description": "Affinity rules for pod scheduling",
+          "additionalProperties": true,
+          "default": {}
+        },
+        "port": {
+          "type": "integer",
+          "description": "xGT server listening port",
+          "default": 4367
+        },
+        "service": {
+          "type": "object",
+          "description": "Kubernetes Service configuration for xGT",
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "type": "string",
+              "description": "Kubernetes service type",
+              "enum": ["ClusterIP", "NodePort", "LoadBalancer"],
+              "default": "ClusterIP"
+            },
+            "annotations": {
+              "type": "object",
+              "description": "Annotations for the xGT service",
+              "additionalProperties": true,
+              "default": {}
+            }
+          }
+        },
+        "startupProbe": {
+          "type": "object",
+          "description": "Startup probe configuration for xGT",
+          "additionalProperties": false,
+          "properties": {
+            "periodSeconds": {
+              "type": "integer",
+              "description": "Seconds between probe checks",
+              "default": 10
+            },
+            "timeoutSeconds": {
+              "type": "integer",
+              "description": "Seconds before the probe times out",
+              "default": 5
+            },
+            "failureThreshold": {
+              "type": "integer",
+              "description": "Number of consecutive failures before marking startup failed",
+              "default": 30
+            }
+          }
+        },
+        "readinessProbe": {
+          "type": "object",
+          "description": "Readiness probe configuration for xGT",
+          "additionalProperties": false,
+          "properties": {
+            "periodSeconds": {
+              "type": "integer",
+              "description": "Seconds between probe checks",
+              "default": 10
+            },
+            "timeoutSeconds": {
+              "type": "integer",
+              "description": "Seconds before the probe times out",
+              "default": 5
+            },
+            "failureThreshold": {
+              "type": "integer",
+              "description": "Number of consecutive failures before marking unhealthy",
+              "default": 3
+            }
+          }
+        },
+        "livenessProbe": {
+          "type": "object",
+          "description": "Liveness probe configuration for xGT",
+          "additionalProperties": false,
+          "properties": {
+            "periodSeconds": {
+              "type": "integer",
+              "description": "Seconds between probe checks",
+              "default": 30
+            },
+            "timeoutSeconds": {
+              "type": "integer",
+              "description": "Seconds before the probe times out",
+              "default": 5
+            },
+            "failureThreshold": {
+              "type": "integer",
+              "description": "Number of consecutive failures before restarting the container",
+              "default": 3
+            }
+          }
+        },
+        "persistence": {
+          "type": "object",
+          "description": "Persistent storage configuration for xGT",
+          "additionalProperties": false,
+          "properties": {
+            "data": {
+              "type": "object",
+              "description": "Data volume persistence settings",
+              "additionalProperties": false,
+              "properties": {
+                "size": {
+                  "type": "string",
+                  "description": "Storage size (e.g. 1Gi, 10Gi)",
+                  "default": "10Gi"
+                },
+                "storageClassName": {
+                  "type": "string",
+                  "description": "Storage class name (empty for cluster default)",
+                  "default": ""
+                },
+                "existingClaim": {
+                  "type": "string",
+                  "description": "Name of an existing PersistentVolumeClaim to use instead of creating one",
+                  "default": ""
+                }
+              }
+            },
+            "log": {
+              "type": "object",
+              "description": "Log volume persistence settings",
+              "additionalProperties": false,
+              "properties": {
+                "size": {
+                  "type": "string",
+                  "description": "Storage size (e.g. 1Gi, 10Gi)",
+                  "default": "1Gi"
+                },
+                "storageClassName": {
+                  "type": "string",
+                  "description": "Storage class name (empty for cluster default)",
+                  "default": ""
+                },
+                "existingClaim": {
+                  "type": "string",
+                  "description": "Name of an existing PersistentVolumeClaim to use instead of creating one",
+                  "default": ""
+                }
+              }
+            }
+          }
+        },
+        "ssl": {
+          "type": "object",
+          "description": "SSL/TLS configuration for the xGT server",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Enable SSL/TLS for the xGT server",
+              "default": false
+            },
+            "existingSecret": {
+              "type": "string",
+              "description": "Name of an existing Secret containing keys 'server.cert.pem' and 'server.key.pem'",
+              "default": ""
+            },
+            "cert": {
+              "type": "string",
+              "description": "PEM-encoded SSL certificate for the xGT server",
+              "default": ""
+            },
+            "key": {
+              "type": "string",
+              "description": "PEM-encoded SSL private key for the xGT server",
+              "default": ""
+            },
+            "mtls": {
+              "type": "boolean",
+              "description": "Require client certificates; needs ca-chain.cert.pem in existingSecret or provided via the caCert parameter",
+              "default": false
+            },
+            "caCert": {
+              "type": "string",
+              "description": "PEM-encoded CA certificate for validating client certificates (ca-chain.cert.pem)",
+              "default": ""
+            }
+          }
+        },
+        "license": {
+          "type": "object",
+          "description": "xGT license configuration",
+          "additionalProperties": false,
+          "properties": {
+            "existingSecret": {
+              "type": "string",
+              "description": "Name of an existing Secret containing the key 'xgtd.lic' with the license data",
+              "default": ""
+            },
+            "data": {
+              "type": "string",
+              "description": "Raw xGT license data",
+              "default": ""
+            }
+          }
+        },
+        "ldap": {
+          "type": "object",
+          "description": "LDAP authentication configuration for xGT",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Enable LDAP authentication for xGT",
+              "default": false
+            },
+            "existingSecret": {
+              "type": "string",
+              "description": "Name of an existing Secret containing the key 'sssd.conf'",
+              "default": ""
+            },
+            "uri": {
+              "type": "string",
+              "description": "LDAP server URI (e.g. ldap://ldap.example.com:389)",
+              "default": ""
+            },
+            "baseDn": {
+              "type": "string",
+              "description": "LDAP base distinguished name for user searches",
+              "default": ""
+            },
+            "bindDn": {
+              "type": "string",
+              "description": "LDAP bind distinguished name for authentication",
+              "default": ""
+            },
+            "bindPassword": {
+              "type": "string",
+              "description": "LDAP bind password (ignored if existingSecret is set)",
+              "default": ""
+            },
+            "startTls": {
+              "type": "boolean",
+              "description": "Enable STARTTLS for the LDAP connection",
+              "default": false
+            },
+            "insecure": {
+              "type": "boolean",
+              "description": "Skip TLS certificate verification for LDAP",
+              "default": false
+            },
+            "sssdConfig": {
+              "type": "string",
+              "description": "Custom SSSD configuration content",
+              "default": ""
+            }
+          }
+        },
+        "config": {
+          "type": "object",
+          "description": "Additional xGT server configuration",
+          "additionalProperties": false,
+          "properties": {
+            "grouplabelCsv": {
+              "type": "string",
+              "description": "CSV content mapping groups to labels",
+              "default": ""
+            },
+            "labelCsv": {
+              "type": "string",
+              "description": "CSV content defining security labels",
+              "default": ""
+            },
+            "proxyList": {
+              "type": "string",
+              "description": "Newline-separated list of proxy CNs for PKIAuth (sets security.proxy_list)",
+              "default": ""
+            }
+          }
+        },
+        "extraConfig": {
+          "type": "object",
+          "description": "Additional arbitrary xGT configuration key-value pairs",
+          "additionalProperties": true,
+          "default": {}
+        },
+        "healthCheck": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "port": {
+              "type": "integer",
+              "description": "Port for gRPC health probe (plain gRPC, no TLS)",
+              "default": 4366
+            }
+          }
+        }
+      }
+    },
+    "openshift": {
+      "type": "object",
+      "description": "OpenShift-specific configuration",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Enable OpenShift compatibility mode",
+          "default": false
+        }
+      }
+    },
+    "networkPolicy": {
+      "type": "object",
+      "description": "Kubernetes NetworkPolicy configuration",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Enable NetworkPolicy resources to restrict pod traffic",
+          "default": true
+        }
+      }
+    }
+  }
+}

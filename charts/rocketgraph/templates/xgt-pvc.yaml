@@ -1,0 +1,37 @@
+{{- if and .Values.xgt.enabled (not .Values.xgt.persistence.data.existingClaim) }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ .Release.Name }}-xgt-data
+  labels:
+    app: xgt
+    {{- include "rocketgraph.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.xgt.persistence.data.size }}
+  {{- if .Values.xgt.persistence.data.storageClassName }}
+  storageClassName: {{ .Values.xgt.persistence.data.storageClassName | quote }}
+  {{- end }}
+{{- end }}
+---
+{{- if and .Values.xgt.enabled (not .Values.xgt.persistence.log.existingClaim) }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ .Release.Name }}-xgt-log
+  labels:
+    app: xgt
+    {{- include "rocketgraph.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.xgt.persistence.log.size }}
+  {{- if .Values.xgt.persistence.log.storageClassName }}
+  storageClassName: {{ .Values.xgt.persistence.log.storageClassName | quote }}
+  {{- end }}
+{{- end }}

@@ -1,0 +1,6 @@
+apiVersion: v2
+name: rocketgraph
+description: Rocketgraph Mission Control with xGT
+icon: https://rocketgraph.com/wp-content/uploads/2025/02/R-logo-color.png
+version: 0.1.0
+appVersion: "2.6.0"

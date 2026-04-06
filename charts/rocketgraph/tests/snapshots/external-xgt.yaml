@@ -1,0 +1,369 @@
+---
+# Source: rocketgraph/templates/networkpolicy.yaml
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: test-release-mongodb-restrict-access
+  labels:
+    helm.sh/chart: rocketgraph-0.1.0
+    app.kubernetes.io/name: rocketgraph
+    app.kubernetes.io/version: "2.6.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/instance: test-release
+spec:
+  podSelector:
+    matchLabels:
+      app: mongodb
+      app.kubernetes.io/instance: test-release
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: backend
+              app.kubernetes.io/instance: test-release
+      ports:
+        - port: 27017
+          protocol: TCP
+---
+# Source: rocketgraph/templates/backend-odbc-configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test-release-backend-odbc-config
+  labels:
+    app: backend
+    helm.sh/chart: rocketgraph-0.1.0
+    app.kubernetes.io/name: rocketgraph
+    app.kubernetes.io/version: "2.6.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/instance: test-release
+data:
+  odbcinst.ini: |
+    [MariaDB Unicode]
+    Driver=libmaodbc.so
+    Description=MariaDB Connector/ODBC(Unicode)
+    Threading=0
+    UsageCount=1
+
+    [SQLite]
+    Description=SQLite ODBC Driver
+    Driver=libsqliteodbc.so
+    Setup=libsqliteodbc.so
+    UsageCount=1
+
+    [SQLite3]
+    Description=SQLite3 ODBC Driver
+    Driver=libsqlite3odbc.so
+    Setup=libsqlite3odbc.so
+    UsageCount=1
+
+    [PostgreSQL ANSI]
+    Description=PostgreSQL ODBC driver (ANSI version)
+    Driver=psqlodbca.so
+    Setup=libodbcpsqlS.so
+    Debug=0
+    CommLog=1
+    UsageCount=1
+
+    [PostgreSQL Unicode]
+    Description=PostgreSQL ODBC driver (Unicode version)
+    Driver=psqlodbcw.so
+    Setup=libodbcpsqlS.so
+    Debug=0
+    CommLog=1
+    UsageCount=1
+---
+# Source: rocketgraph/templates/mongodb-pvc.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: test-release-mongodb-data
+  labels:
+    app: mongodb
+    helm.sh/chart: rocketgraph-0.1.0
+    app.kubernetes.io/name: rocketgraph
+    app.kubernetes.io/version: "2.6.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/instance: test-release
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+# Source: rocketgraph/templates/backend-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: test-release-backend
+  labels:
+    app: backend
+    helm.sh/chart: rocketgraph-0.1.0
+    app.kubernetes.io/name: rocketgraph
+    app.kubernetes.io/version: "2.6.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/instance: test-release
+spec:
+  type: ClusterIP
+  sessionAffinity: ClientIP
+  ports:
+    - name: http
+      port: 5000
+      targetPort: 5000
+  selector:
+    app: backend
+    app.kubernetes.io/instance: test-release
+---
+# Source: rocketgraph/templates/frontend-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: test-release-frontend
+  labels:
+    app: frontend
+    helm.sh/chart: rocketgraph-0.1.0
+    app.kubernetes.io/name: rocketgraph
+    app.kubernetes.io/version: "2.6.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/instance: test-release
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 80
+      targetPort: 80
+    - name: https
+      port: 443
+      targetPort: 443
+  selector:
+    app: frontend
+    app.kubernetes.io/instance: test-release
+---
+# Source: rocketgraph/templates/mongodb-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: test-release-mongodb
+  labels:
+    app: mongodb
+    helm.sh/chart: rocketgraph-0.1.0
+    app.kubernetes.io/name: rocketgraph
+    app.kubernetes.io/version: "2.6.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/instance: test-release
+spec:
+  type: ClusterIP
+  ports:
+    - name: mongodb
+      port: 27017
+      targetPort: 27017
+  selector:
+    app: mongodb
+    app.kubernetes.io/instance: test-release
+---
+# Source: rocketgraph/templates/backend-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: test-release-backend
+  labels:
+    app: backend
+    helm.sh/chart: rocketgraph-0.1.0
+    app.kubernetes.io/name: rocketgraph
+    app.kubernetes.io/version: "2.6.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/instance: test-release
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: backend
+      app.kubernetes.io/instance: test-release
+  template:
+    metadata:
+      labels:
+        app: backend
+        app.kubernetes.io/instance: test-release
+      annotations:
+        checksum/odbc-config: a31521a0c3e811ebe09e9c63d4639d9e828db296e5e129f718d4b88c3cc07253
+    spec:
+      containers:
+        - name: backend
+          image: "docker.io/rocketgraph/mission-control-backend:2.6.0"
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 5000
+              protocol: TCP
+          env:
+            - name: MC_MONGO_URI
+              value: "mongodb://test-release-mongodb:27017"
+            - name: MC_DEFAULT_XGT_HOST
+              value: "xgt.example.com"
+            - name: MC_DEFAULT_XGT_PORT
+              value: ""
+            - name: MC_SESSION_TTL
+              value: ""
+            - name: XGT_SERVER_CN
+              value: ""
+            - name: XGT_AUTH_TYPES
+              value: "['BasicAuth', 'FilePKIAuth', 'PKIAuth']"
+            - name: LD_LIBRARY_PATH
+              value: "/odbc"
+            - name: MC_PORT
+              value: "80"
+            - name: MC_SSL_PORT
+              value: "443"
+            - name: MC_XGT_ALLOWED_HOSTS
+              value: ""
+          startupProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 30
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            periodSeconds: 60
+            timeoutSeconds: 5
+            failureThreshold: 5
+          volumeMounts:
+            - name: odbc-config
+              mountPath: /odbc
+      restartPolicy: Always
+      volumes:
+        - name: odbc-config
+          configMap:
+            name: test-release-backend-odbc-config
+---
+# Source: rocketgraph/templates/frontend-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: test-release-frontend
+  labels:
+    app: frontend
+    helm.sh/chart: rocketgraph-0.1.0
+    app.kubernetes.io/name: rocketgraph
+    app.kubernetes.io/version: "2.6.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/instance: test-release
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: frontend
+      app.kubernetes.io/instance: test-release
+  template:
+    metadata:
+      labels:
+        app: frontend
+        app.kubernetes.io/instance: test-release
+    spec:
+      containers:
+        - name: frontend
+          image: "docker.io/rocketgraph/mission-control-frontend:2.6.0"
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: BACKEND_HOST
+              value: "test-release-backend"
+            - name: BACKEND_PORT
+              value: "5000"
+          ports:
+            - name: http
+              containerPort: 80
+              protocol: TCP
+            - name: https
+              containerPort: 443
+              protocol: TCP
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+      restartPolicy: Always
+---
+# Source: rocketgraph/templates/mongodb-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: test-release-mongodb
+  labels:
+    app: mongodb
+    helm.sh/chart: rocketgraph-0.1.0
+    app.kubernetes.io/name: rocketgraph
+    app.kubernetes.io/version: "2.6.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/instance: test-release
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mongodb
+      app.kubernetes.io/instance: test-release
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: mongodb
+        app.kubernetes.io/instance: test-release
+    spec:
+      containers:
+        - name: mongodb
+          image: "docker.io/library/mongo:latest"
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: mongodb
+              containerPort: 27017
+              protocol: TCP
+          readinessProbe:
+            exec:
+              command:
+                - mongosh
+                - --eval
+                - "db.adminCommand('ping')"
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            exec:
+              command:
+                - mongosh
+                - --eval
+                - "db.adminCommand('ping')"
+            initialDelaySeconds: 10
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+          volumeMounts:
+            - name: mongodb-data
+              mountPath: /data/db
+      restartPolicy: Always
+      volumes:
+        - name: mongodb-data
+          persistentVolumeClaim:
+            claimName: test-release-mongodb-data

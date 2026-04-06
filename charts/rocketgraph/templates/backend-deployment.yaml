@@ -1,0 +1,271 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "rocketgraph.fullname.backend" . }}
+  labels:
+    app: backend
+    {{- include "rocketgraph.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.backend.autoscaling.enabled }}
+  replicas: {{ .Values.backend.replicas }}
+  {{- end }}
+  selector:
+    matchLabels:
+      app: backend
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: backend
+        app.kubernetes.io/instance: {{ .Release.Name }}
+      annotations:
+        {{- if not .Values.backend.odbc.enabled }}
+        checksum/odbc-config: {{ include (print $.Template.BasePath "/backend-odbc-configmap.yaml") . | sha256sum }}
+        {{- end }}
+        {{- if or .Values.backend.siteConfig.yml .Values.backend.siteConfig.py }}
+        checksum/site-config: {{ include (print $.Template.BasePath "/backend-site-configmap.yaml") . | sha256sum }}
+        {{- end }}
+        {{- if or .Values.backend.oidc.clientSecret .Values.backend.oidc.caCert .Values.backend.oidc.caCertExistingSecret }}
+        checksum/oidc-secret: {{ include (print $.Template.BasePath "/backend-oidc-secret.yaml") . | sha256sum }}
+        {{- end }}
+        {{- if or .Values.backend.oidc.caCert .Values.backend.oidc.caCertExistingSecret }}
+        checksum/oidc-ca-secret: {{ .Values.backend.oidc.caCert | default .Values.backend.oidc.caCertExistingSecret | sha256sum }}
+        {{- end }}
+        {{- with .Values.backend.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if .Values.openshift.enabled }}
+      serviceAccountName: {{ include "rocketgraph.fullname.serviceaccount" . }}
+      {{- end }}
+      {{- with .Values.backend.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: backend
+          image: "{{ .Values.backend.image.repository }}:{{ coalesce .Values.imageVersions.backend .Values.backend.image.tag .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.backend.image.pullPolicy }}
+          {{- with .Values.backend.containerSecurityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          ports:
+            - name: http
+              containerPort: 5000
+              protocol: TCP
+          env:
+            {{- if .Values.mongodb.enabled }}
+            {{- if .Values.mongodb.auth.enabled }}
+            - name: MONGO_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "rocketgraph.mongodbAuthSecret" . }}
+                  key: mongodb-root-username
+            - name: MONGO_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "rocketgraph.mongodbAuthSecret" . }}
+                  key: mongodb-root-password
+            - name: MC_MONGO_URI
+              value: "mongodb://$(MONGO_USER):$(MONGO_PASS)@{{ include "rocketgraph.fullname.mongodb" . }}:27017"
+            {{- else }}
+            - name: MC_MONGO_URI
+              value: "mongodb://{{ include "rocketgraph.fullname.mongodb" . }}:27017"
+            {{- end }}
+            {{- else }}
+            - name: MC_MONGO_URI
+            {{- if .Values.mongodb.externalUriSecret }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.mongodb.externalUriSecret }}
+                  key: mongodb-uri
+            {{- else }}
+              value: {{ .Values.mongodb.externalUri | quote }}
+            {{- end }}
+            {{- end }}
+            {{- if or .Values.backend.tls.existingSecret .Values.backend.tls.xgtServerCert }}
+            - name: MC_SSL_PUBLIC_CERT
+              value: "/etc/ssl/certs/xgt-server.pem"
+            {{- end }}
+            {{- if .Values.backend.tls.mtls }}
+            - name: MC_SSL_PROXY_PUBLIC_CERT
+              value: "/etc/ssl/certs/proxy-client-cert.pem"
+            - name: MC_SSL_PROXY_PRIVATE_KEY
+              value: "/etc/ssl/private/proxy-client-key.pem"
+            {{- end }}
+            - name: MC_DEFAULT_XGT_HOST
+              value: {{ .Values.backend.env.MC_DEFAULT_XGT_HOST | default (include "rocketgraph.fullname.xgt" .) | quote }}
+            - name: MC_DEFAULT_XGT_PORT
+              value: {{ .Values.backend.env.MC_DEFAULT_XGT_PORT | quote }}
+            - name: MC_SESSION_TTL
+              value: {{ .Values.backend.env.MC_SESSION_TTL | quote }}
+            - name: XGT_SERVER_CN
+              value: {{ .Values.backend.env.XGT_SERVER_CN | quote }}
+            - name: XGT_AUTH_TYPES
+              value: {{ .Values.backend.env.XGT_AUTH_TYPES | quote }}
+            - name: LD_LIBRARY_PATH
+              value: "/odbc{{ if .Values.backend.env.MC_ODBC_LIBRARY_PATH }}:{{ .Values.backend.env.MC_ODBC_LIBRARY_PATH }}{{ end }}"
+            - name: MC_PORT
+              value: {{ .Values.backend.env.MC_PORT | default (.Values.frontend.service.httpPort | toString) | quote }}
+            - name: MC_SSL_PORT
+              value: {{ .Values.backend.env.MC_SSL_PORT | default (.Values.frontend.service.httpsPort | toString) | quote }}
+            {{- if .Values.backend.oidc.issuer }}
+            - name: MC_OIDC_ISSUER
+              value: {{ .Values.backend.oidc.issuer | quote }}
+            {{- end }}
+            {{- if .Values.backend.oidc.clientId }}
+            - name: MC_OIDC_CLIENT_ID
+              value: {{ .Values.backend.oidc.clientId | quote }}
+            {{- end }}
+            {{- if or .Values.backend.oidc.clientSecret .Values.backend.oidc.existingSecret }}
+            - name: MC_OIDC_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "rocketgraph.backendOidcSecret" . }}
+                  key: MC_OIDC_CLIENT_SECRET
+            {{- end }}
+            {{- if .Values.backend.oidc.scopes }}
+            - name: MC_OIDC_SCOPES
+              value: {{ .Values.backend.oidc.scopes | quote }}
+            {{- end }}
+            {{- if .Values.backend.oidc.frontendUrl }}
+            - name: MC_OIDC_FRONTEND_URL
+              value: {{ .Values.backend.oidc.frontendUrl | quote }}
+            {{- end }}
+            {{- if .Values.backend.oidc.redirectUri }}
+            - name: MC_OIDC_REDIRECT_URI
+              value: {{ .Values.backend.oidc.redirectUri | quote }}
+            {{- end }}
+            {{- if .Values.backend.oidc.allowedOrigins }}
+            - name: MC_OIDC_ALLOWED_ORIGINS
+              value: {{ .Values.backend.oidc.allowedOrigins | quote }}
+            {{- end }}
+            {{- if .Values.backend.oidc.tlsVerify }}
+            - name: MC_OIDC_TLS_VERIFY
+              value: {{ .Values.backend.oidc.tlsVerify | quote }}
+            {{- end }}
+            {{- if or .Values.backend.oidc.caCert .Values.backend.oidc.caCertExistingSecret }}
+            - name: MC_OIDC_CA_CERT
+              value: /etc/ssl/certs/oidc-ca.pem
+            {{- end }}
+            - name: MC_XGT_ALLOWED_HOSTS
+              value: {{ .Values.backend.oidc.xgtAllowedHosts | default (ternary (printf "%s:%d" (include "rocketgraph.fullname.xgt" .) (.Values.xgt.port | int)) "" .Values.xgt.enabled) | quote }}
+          startupProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            periodSeconds: {{ .Values.backend.startupProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.backend.startupProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.backend.startupProbe.failureThreshold }}
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            periodSeconds: {{ .Values.backend.readinessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.backend.readinessProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.backend.readinessProbe.failureThreshold }}
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            periodSeconds: {{ .Values.backend.livenessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.backend.livenessProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.backend.livenessProbe.failureThreshold }}
+          {{- with .Values.backend.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            {{- if or .Values.backend.tls.existingSecret .Values.backend.tls.xgtServerCert }}
+            - name: tls-certs
+              mountPath: /etc/ssl/certs/xgt-server.pem
+              subPath: xgt-server.pem
+              readOnly: true
+            {{- end }}
+            {{- if .Values.backend.tls.mtls }}
+            - name: tls-certs
+              mountPath: /etc/ssl/certs/proxy-client-cert.pem
+              subPath: proxy-client-cert.pem
+              readOnly: true
+            - name: tls-certs
+              mountPath: /etc/ssl/private/proxy-client-key.pem
+              subPath: proxy-client-key.pem
+              readOnly: true
+            {{- end }}
+            {{- if .Values.backend.odbc.enabled }}
+            - name: odbc-drivers
+              mountPath: /odbc
+            {{- else }}
+            - name: odbc-config
+              mountPath: /odbc
+            {{- end }}
+            {{- if .Values.backend.iaccess.enabled }}
+            - name: iaccess
+              mountPath: /opt/ibm/iaccess
+            {{- end }}
+            {{- if .Values.backend.siteConfig.yml }}
+            - name: site-config
+              mountPath: /app/site_config/site_config.yml
+              subPath: site_config.yml
+              readOnly: true
+            {{- end }}
+            {{- if .Values.backend.siteConfig.py }}
+            - name: site-config
+              mountPath: /app/site_config/site_config.py
+              subPath: site_config.py
+              readOnly: true
+            {{- end }}
+            {{- if or .Values.backend.oidc.caCert .Values.backend.oidc.caCertExistingSecret }}
+            - name: oidc-ca-cert
+              mountPath: /etc/ssl/certs/oidc-ca.pem
+              subPath: oidc-ca.pem
+              readOnly: true
+            {{- end }}
+      {{- with .Values.backend.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.backend.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.backend.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      restartPolicy: Always
+      volumes:
+        {{- if or .Values.backend.tls.existingSecret .Values.backend.tls.xgtServerCert .Values.backend.tls.proxyClientCert .Values.backend.tls.proxyClientKey }}
+        - name: tls-certs
+          secret:
+            secretName: {{ include "rocketgraph.backendTlsSecret" . }}
+        {{- end }}
+        {{- if .Values.backend.odbc.enabled }}
+        - name: odbc-drivers
+          persistentVolumeClaim:
+            claimName: {{ .Values.backend.odbc.existingClaim | default (printf "%s-backend-odbc" .Release.Name) }}
+        {{- else }}
+        - name: odbc-config
+          configMap:
+            name: {{ include "rocketgraph.fullname.backend" . }}-odbc-config
+        {{- end }}
+        {{- if .Values.backend.iaccess.enabled }}
+        - name: iaccess
+          persistentVolumeClaim:
+            claimName: {{ .Values.backend.iaccess.existingClaim | default (printf "%s-backend-iaccess" .Release.Name) }}
+        {{- end }}
+        {{- if or .Values.backend.siteConfig.yml .Values.backend.siteConfig.py }}
+        - name: site-config
+          configMap:
+            name: {{ include "rocketgraph.fullname.backend" . }}-site-config
+        {{- end }}
+        {{- if or .Values.backend.oidc.caCert .Values.backend.oidc.caCertExistingSecret }}
+        - name: oidc-ca-cert
+          secret:
+            secretName: {{ include "rocketgraph.backendOidcCaSecret" . }}
+        {{- end }}

@@ -1,0 +1,1 @@
+{{- include "rocketgraph.pdb" (list "frontend" .) -}}

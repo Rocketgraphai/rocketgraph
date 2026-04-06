@@ -1,0 +1,60 @@
+{{- if .Values.xgt.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "rocketgraph.fullname.xgt" . }}-config
+  labels:
+    app: xgt
+    {{- include "rocketgraph.labels" . | nindent 4 }}
+data:
+  audit.xml: |
+    <?xml version="1.0" encoding="UTF-8"?>
+    <log4j:configuration xmlns:log4j="http://jakarta.apache.org/log4j/">
+
+        <root>
+            <level value="OFF"/>
+        </root>
+
+        <appender name="auditJson" class="org.apache.log4j.RollingFileAppender">
+            <param name="File" value="/log/audit.log"/>
+            <param name="MaxFileSize" value="10MB"/>
+            <param name="MaxBackupIndex" value="10"/>
+            <layout class="JSONLayout"/>
+        </appender>
+
+        <logger name="xgtdaudit" additivity="false">
+            <level value="INFO"/>
+            <appender-ref ref="auditJson"/>
+        </logger>
+
+    </log4j:configuration>
+  grouplabel.csv: |
+    {{- .Values.xgt.config.grouplabelCsv | default "group,label\nxgtd,xgtadmin" | nindent 4 }}
+  label.csv: |
+    {{- .Values.xgt.config.labelCsv | default "label\nxgtadmin" | nindent 4 }}
+  {{- if .Values.xgt.config.proxyList }}
+  proxy_list: |
+    {{- .Values.xgt.config.proxyList | nindent 4 }}
+  {{- end }}
+  xgtd.conf: |
+    {{- $defaults := dict
+      "audit.config_file" "/conf/audit.xml"
+      "license.location" "6200@localhost:/conf/licenses/xgtd.lic"
+      "logging.filepath" "/log"
+      "logging.fileprefix" "xgtd"
+      "logging.log_to_console" "true"
+      "security.adminlabel" "xgtadmin"
+      "security.grouplabelfile" "/conf/grouplabel.csv"
+      "security.labelfile" "/conf/label.csv"
+      "system.ssl_root_dir" "/conf/ssl"
+      "system.usessl" (.Values.xgt.ssl.enabled | toString)
+      "system.usemtls" (and .Values.xgt.ssl.enabled .Values.xgt.ssl.mtls | toString)
+    }}
+    {{- if .Values.xgt.config.proxyList }}
+    {{- $proxyItems := splitList "\n" (.Values.xgt.config.proxyList | trim) | compact }}
+    {{- $proxyStr := printf "[%s]" ($proxyItems | join ",") }}
+    {{- $_ := set $defaults "security.proxy_list" $proxyStr }}
+    {{- end }}
+    {{- $merged := merge (.Values.xgt.extraConfig | default dict) $defaults }}
+    {{- $merged | toPrettyJson | nindent 4 }}
+{{- end }}

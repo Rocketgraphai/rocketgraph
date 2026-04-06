@@ -1,0 +1,37 @@
+{{- if and .Values.backend.odbc.enabled (not .Values.backend.odbc.existingClaim) }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ .Release.Name }}-backend-odbc
+  labels:
+    app: backend
+    {{- include "rocketgraph.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.backend.odbc.storageSize }}
+  {{- if .Values.backend.odbc.storageClassName }}
+  storageClassName: {{ .Values.backend.odbc.storageClassName | quote }}
+  {{- end }}
+{{- end }}
+---
+{{- if and .Values.backend.iaccess.enabled (not .Values.backend.iaccess.existingClaim) }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ .Release.Name }}-backend-iaccess
+  labels:
+    app: backend
+    {{- include "rocketgraph.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.backend.iaccess.storageSize }}
+  {{- if .Values.backend.iaccess.storageClassName }}
+  storageClassName: {{ .Values.backend.iaccess.storageClassName | quote }}
+  {{- end }}
+{{- end }}

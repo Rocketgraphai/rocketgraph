@@ -1,0 +1,29 @@
+{{- include "rocketgraph.validate" . }}
+Rocketgraph has been deployed!
+
+To access the frontend:
+
+  kubectl port-forward svc/{{ include "rocketgraph.fullname.frontend" . }} 8080:{{ .Values.frontend.service.httpPort }}
+
+Then visit: http://localhost:8080
+
+{{- if .Values.openshift.enabled }}
+
+OpenShift Route:
+
+  oc expose svc/{{ include "rocketgraph.fullname.frontend" . }}
+  oc get route {{ include "rocketgraph.fullname.frontend" . }} -o jsonpath='{.spec.host}'
+{{- end }}
+
+{{- if not .Values.xgt.enabled }}
+
+NOTE: Using external xGT at {{ .Values.backend.env.MC_DEFAULT_XGT_HOST }}{{ with .Values.backend.env.MC_DEFAULT_XGT_PORT }}:{{ . }}{{ end }}
+{{- end }}
+
+{{- if not .Values.mongodb.enabled }}
+
+NOTE: Using external MongoDB.
+{{- else if not .Values.mongodb.auth.enabled }}
+
+WARNING: MongoDB authentication is disabled. Set mongodb.auth.enabled=true for production use.
+{{- end }}

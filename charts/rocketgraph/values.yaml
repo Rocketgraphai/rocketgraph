@@ -1,0 +1,283 @@
+imagePullSecrets: []
+
+# Per-component image version overrides. If set, takes precedence over
+# each component's image.tag. Falls back to Chart.appVersion if both are empty.
+imageVersions:
+  frontend: ""
+  backend: ""
+  xgt: ""
+
+frontend:
+  image:
+    repository: docker.io/rocketgraph/mission-control-frontend
+    tag: ""  # Defaults to Chart.appVersion
+    pullPolicy: IfNotPresent
+  replicas: 1
+  resources: {}
+  # Recommended minimums:
+  #   requests:
+  #     cpu: 100m
+  #     memory: 128Mi
+  #   limits:
+  #     cpu: 500m
+  #     memory: 256Mi
+  podDisruptionBudget:
+    enabled: false
+    # minAvailable: 1    # defaults to 1 if neither field is set; use 0 if node drains must not be blocked
+    # maxUnavailable: 1  # alternative to minAvailable
+  podSecurityContext: {}
+  containerSecurityContext: {}
+  podAnnotations: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  service:
+    type: ClusterIP
+    httpPort: 80
+    httpsPort: 443
+    annotations: {}
+  readinessProbe:
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+  livenessProbe:
+    initialDelaySeconds: 10
+    periodSeconds: 30
+    timeoutSeconds: 5
+    failureThreshold: 3
+  # TLS certificates — provide either existingSecret OR inline cert data
+  tls:
+    existingSecret: ""  # Must have keys: public.pem, private.pem (optional: chain.pem for mTLS)
+    publicCert: ""      # Plain-text PEM content (auto base64-encoded by k8s)
+    privateKey: ""
+    certChain: ""       # Inline CA chain PEM for validating browser client certs
+    mtls: false         # Enable browser mTLS; mounts chain.pem from existingSecret or certChain
+
+backend:
+  image:
+    repository: docker.io/rocketgraph/mission-control-backend
+    tag: ""  # Defaults to Chart.appVersion
+    pullPolicy: IfNotPresent
+  autoscaling:
+    enabled: false  # When true, backend Deployment omits spec.replicas so HPA or kubectl scale can own replica count
+  replicas: 1
+  resources: {}
+  # Recommended minimums:
+  #   requests:
+  #     cpu: 100m
+  #     memory: 256Mi
+  #   limits:
+  #     cpu: 1000m
+  #     memory: 512Mi
+  podDisruptionBudget:
+    enabled: false
+    # minAvailable: 1    # defaults to 1 if neither field is set; use 0 if node drains must not be blocked
+    # maxUnavailable: 1  # alternative to minAvailable
+  podSecurityContext: {}
+  containerSecurityContext: {}
+  podAnnotations: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  service:
+    annotations: {}
+  startupProbe:
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 30
+  readinessProbe:
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+  livenessProbe:
+    periodSeconds: 60
+    timeoutSeconds: 5
+    failureThreshold: 5
+  env:
+    MC_DEFAULT_XGT_HOST: ""
+    MC_DEFAULT_XGT_PORT: ""
+    MC_SESSION_TTL: ""
+    XGT_SERVER_CN: ""
+    XGT_AUTH_TYPES: "['BasicAuth', 'FilePKIAuth', 'PKIAuth']"
+    MC_ODBC_LIBRARY_PATH: ""
+    MC_PORT: ""      # Frontend HTTP port (defaults to frontend.service.httpPort)
+    MC_SSL_PORT: ""  # Frontend HTTPS port (defaults to frontend.service.httpsPort)
+  # TLS certificates
+  tls:
+    existingSecret: ""  # Must have key: xgt-server.pem (optional: proxy-client-cert.pem, proxy-client-key.pem)
+    xgtServerCert: ""
+    proxyClientCert: ""
+    proxyClientKey: ""
+    mtls: false        # Enable mTLS for backend connections to xGT
+  # Site configuration files (inline content)
+  siteConfig:
+    yml: ""
+    py: ""
+  # OIDC authentication
+  oidc:
+    issuer: ""            # e.g. https://idp.example.com/realms/xgt
+    clientId: ""
+    clientSecret: ""      # inline (creates a Secret); use existingSecret in production
+    existingSecret: ""    # existing Secret with key: MC_OIDC_CLIENT_SECRET
+    scopes: ""            # e.g. "openid profile email"
+    frontendUrl: ""       # e.g. https://mc.example.com
+    redirectUri: ""       # e.g. https://mc.example.com/api/login/oidc/callback
+    allowedOrigins: ""
+    tlsVerify: ""         # "true" or "false"; leave empty to use default
+    caCert: ""            # inline CA PEM for OIDC provider TLS (creates a Secret)
+    caCertExistingSecret: ""  # existing Secret with key: oidc-ca.pem
+    # Allowlist of xGT host:port pairs the backend may connect to (SSRF prevention).
+    # Defaults to the internal xGT service when xgt.enabled=true.
+    # Set explicitly when using an external xGT (e.g. "xgt.myns.svc.cluster.local:4367").
+    xgtAllowedHosts: ""
+  # ODBC driver directory (PVC for binary .so files)
+  odbc:
+    enabled: false
+    existingClaim: ""
+    storageSize: 1Gi
+    storageClassName: ""
+  # IBM iAccess directory
+  iaccess:
+    enabled: false
+    existingClaim: ""
+    storageSize: 1Gi
+    storageClassName: ""
+
+mongodb:
+  # Set to false to skip deploying MongoDB and use an external database instead
+  enabled: true
+  externalUri: ""           # e.g. mongodb://user:pass@external-host:27017/dbname
+  externalUriSecret: ""     # Secret name with key 'mongodb-uri' (preferred over externalUri)
+  image:
+    repository: docker.io/library/mongo
+    tag: latest
+    pullPolicy: IfNotPresent
+  replicas: 1
+  resources: {}
+  # Recommended minimums:
+  #   requests:
+  #     cpu: 250m
+  #     memory: 512Mi
+  #   limits:
+  #     cpu: 1000m
+  #     memory: 1Gi
+  podDisruptionBudget:
+    enabled: false
+    # minAvailable: 1    # defaults to 1 if neither field is set; use 0 if node drains must not be blocked
+    # maxUnavailable: 1  # alternative to minAvailable
+  podSecurityContext: {}
+  containerSecurityContext: {}
+  podAnnotations: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  service:
+    annotations: {}
+  readinessProbe:
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+  livenessProbe:
+    initialDelaySeconds: 10
+    periodSeconds: 30
+    timeoutSeconds: 5
+    failureThreshold: 3
+  auth:
+    enabled: false
+    existingSecret: ""  # Must have keys: mongodb-root-username, mongodb-root-password
+    rootUsername: ""
+    rootPassword: ""
+  persistence:
+    size: 1Gi
+    storageClassName: ""
+    existingClaim: ""
+
+xgt:
+  enabled: true  # Set to false to use an external xGT server
+  image:
+    repository: docker.io/rocketgraph/xgt
+    tag: ""  # Defaults to Chart.appVersion
+    pullPolicy: IfNotPresent
+  replicas: 1
+  resources: {}
+  # Recommended minimums:
+  #   requests:
+  #     cpu: 500m
+  #     memory: 2Gi
+  #   limits:
+  #     cpu: 4000m
+  #     memory: 8Gi
+  podDisruptionBudget:
+    enabled: false
+    # minAvailable: 1    # defaults to 1 if neither field is set; use 0 if node drains must not be blocked
+    # maxUnavailable: 1  # alternative to minAvailable
+  podSecurityContext: {}
+  containerSecurityContext: {}
+  podAnnotations: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  port: 4367
+  service:
+    type: ClusterIP
+    annotations: {}
+  startupProbe:
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 30
+  readinessProbe:
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+  livenessProbe:
+    periodSeconds: 30
+    timeoutSeconds: 5
+    failureThreshold: 3
+  persistence:
+    data:
+      size: 10Gi
+      storageClassName: ""
+      existingClaim: ""
+    log:
+      size: 1Gi
+      storageClassName: ""
+      existingClaim: ""
+  ssl:
+    enabled: false
+    existingSecret: ""  # Must have keys: server.cert.pem, server.key.pem
+    cert: ""            # Inline server cert PEM
+    key: ""             # Inline server key PEM
+    mtls: false         # Require client certs; needs ca-chain.cert.pem in existingSecret or via caCert
+    caCert: ""          # Inline CA cert PEM for validating client certs (ca-chain.cert.pem)
+  license:
+    existingSecret: ""  # Must have key: xgtd.lic
+    data: ""            # Plain-text license content
+  # LDAP authentication via SSSD
+  ldap:
+    enabled: false
+    existingSecret: ""  # Must have key: sssd.conf
+    uri: ""           # e.g. ldap://ldap.example.org
+    baseDn: ""        # e.g. dc=example,dc=org
+    bindDn: ""        # e.g. cn=admin,dc=example,dc=org
+    bindPassword: ""  # bind password
+    startTls: false   # enable STARTTLS for LDAP connections
+    insecure: false   # disable TLS entirely (non-TLS ldap:// URIs)
+    sssdConfig: ""    # raw sssd.conf content (overrides uri/baseDn/bindDn/etc.)
+  # xGT config file overrides
+  config:
+    grouplabelCsv: ""  # Override grouplabel.csv contents
+    labelCsv: ""       # Override label.csv contents
+    proxyList: ""      # Newline-separated list of proxy CNs for PKIAuth (sets security.proxy_list)
+  # Extra xgtd.conf overrides — any key here is merged into the config
+  # Example: { "system.max_memory": "16" }
+  extraConfig: {}
+  # gRPC health check port (plain gRPC, no TLS)
+  healthCheck:
+    port: 4366
+
+openshift:
+  # Set to true when deploying on OpenShift — creates a ServiceAccount with anyuid SCC
+  enabled: false
+
+networkPolicy:
+  enabled: true

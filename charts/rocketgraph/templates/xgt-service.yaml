@@ -1,0 +1,23 @@
+{{- if .Values.xgt.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "rocketgraph.fullname.xgt" . }}
+  labels:
+    app: xgt
+    {{- include "rocketgraph.labels" . | nindent 4 }}
+  {{- with .Values.xgt.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.xgt.service.type }}
+  sessionAffinity: ClientIP
+  ports:
+    - name: xgt
+      port: {{ .Values.xgt.port }}
+      targetPort: {{ .Values.xgt.port }}
+  selector:
+    app: xgt
+    app.kubernetes.io/instance: {{ .Release.Name }}
+{{- end }}

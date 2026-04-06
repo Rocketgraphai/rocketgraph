@@ -1,0 +1,24 @@
+{{- if and .Values.networkPolicy.enabled .Values.mongodb.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ .Release.Name }}-mongodb-restrict-access
+  labels:
+    {{- include "rocketgraph.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app: mongodb
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: backend
+              app.kubernetes.io/instance: {{ .Release.Name }}
+      ports:
+        - port: 27017
+          protocol: TCP
+{{- end }}

@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "rocketgraph.fullname.frontend" . }}
+  labels:
+    app: frontend
+    {{- include "rocketgraph.labels" . | nindent 4 }}
+  {{- with .Values.frontend.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.frontend.service.type }}
+  ports:
+    - name: http
+      port: {{ .Values.frontend.service.httpPort }}
+      targetPort: 80
+    - name: https
+      port: {{ .Values.frontend.service.httpsPort }}
+      targetPort: 443
+  selector:
+    app: frontend
+    app.kubernetes.io/instance: {{ .Release.Name }}

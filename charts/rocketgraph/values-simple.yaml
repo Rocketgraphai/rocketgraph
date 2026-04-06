@@ -1,0 +1,16 @@
+# Rocketgraph — minimal configuration
+# For all options see values.yaml
+#
+# Usage:
+#   helm install rocketgraph ./charts/rocketgraph -f charts/rocketgraph/values-simple.yaml
+
+# Single-user mode — no login required
+backend:
+  env:
+    XGT_AUTH_TYPES: "[]"
+
+# xGT graph database persistence
+xgt:
+  persistence:
+    data:
+      size: 10Gi

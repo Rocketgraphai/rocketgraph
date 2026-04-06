@@ -1,0 +1,42 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "rocketgraph.fullname.backend" . }}-odbc-config
+  labels:
+    app: backend
+    {{- include "rocketgraph.labels" . | nindent 4 }}
+data:
+  odbcinst.ini: |
+    [MariaDB Unicode]
+    Driver=libmaodbc.so
+    Description=MariaDB Connector/ODBC(Unicode)
+    Threading=0
+    UsageCount=1
+
+    [SQLite]
+    Description=SQLite ODBC Driver
+    Driver=libsqliteodbc.so
+    Setup=libsqliteodbc.so
+    UsageCount=1
+
+    [SQLite3]
+    Description=SQLite3 ODBC Driver
+    Driver=libsqlite3odbc.so
+    Setup=libsqlite3odbc.so
+    UsageCount=1
+
+    [PostgreSQL ANSI]
+    Description=PostgreSQL ODBC driver (ANSI version)
+    Driver=psqlodbca.so
+    Setup=libodbcpsqlS.so
+    Debug=0
+    CommLog=1
+    UsageCount=1
+
+    [PostgreSQL Unicode]
+    Description=PostgreSQL ODBC driver (Unicode version)
+    Driver=psqlodbcw.so
+    Setup=libodbcpsqlS.so
+    Debug=0
+    CommLog=1
+    UsageCount=1

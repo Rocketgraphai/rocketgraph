@@ -1,0 +1,109 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "rocketgraph.fullname.frontend" . }}
+  labels:
+    app: frontend
+    {{- include "rocketgraph.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.frontend.replicas }}
+  selector:
+    matchLabels:
+      app: frontend
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: frontend
+        app.kubernetes.io/instance: {{ .Release.Name }}
+      {{- with .Values.frontend.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if .Values.openshift.enabled }}
+      serviceAccountName: {{ include "rocketgraph.fullname.serviceaccount" . }}
+      {{- end }}
+      {{- with .Values.frontend.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: frontend
+          image: "{{ .Values.frontend.image.repository }}:{{ coalesce .Values.imageVersions.frontend .Values.frontend.image.tag .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.frontend.image.pullPolicy }}
+          {{- with .Values.frontend.containerSecurityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          env:
+            - name: BACKEND_HOST
+              value: {{ include "rocketgraph.fullname.backend" . | quote }}
+            - name: BACKEND_PORT
+              value: "5000"
+          ports:
+            - name: http
+              containerPort: 80
+              protocol: TCP
+            - name: https
+              containerPort: 443
+              protocol: TCP
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: {{ .Values.frontend.readinessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.frontend.readinessProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.frontend.readinessProbe.failureThreshold }}
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: {{ .Values.frontend.livenessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.frontend.livenessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.frontend.livenessProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.frontend.livenessProbe.failureThreshold }}
+          {{- with .Values.frontend.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- if or .Values.frontend.tls.existingSecret .Values.frontend.tls.publicCert .Values.frontend.tls.privateKey }}
+          volumeMounts:
+            - name: tls-certs
+              mountPath: /etc/ssl/certs/td.pem
+              subPath: public.pem
+              readOnly: true
+            - name: tls-certs
+              mountPath: /etc/ssl/private/td.pem
+              subPath: private.pem
+              readOnly: true
+            {{- if and .Values.frontend.tls.mtls (or .Values.frontend.tls.certChain .Values.frontend.tls.existingSecret) }}
+            - name: tls-certs
+              mountPath: /etc/ssl/certs/ca-chain.pem
+              subPath: chain.pem
+              readOnly: true
+            {{- end }}
+            {{- end }}
+      {{- with .Values.frontend.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.frontend.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.frontend.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      restartPolicy: Always
+      {{- if or .Values.frontend.tls.existingSecret .Values.frontend.tls.publicCert .Values.frontend.tls.privateKey }}
+      volumes:
+        - name: tls-certs
+          secret:
+            secretName: {{ include "rocketgraph.frontendTlsSecret" . }}
+        {{- end }}

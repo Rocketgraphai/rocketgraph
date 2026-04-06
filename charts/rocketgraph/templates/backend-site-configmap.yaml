@@ -1,0 +1,18 @@
+{{- if or .Values.backend.siteConfig.yml .Values.backend.siteConfig.py }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "rocketgraph.fullname.backend" . }}-site-config
+  labels:
+    app: backend
+    {{- include "rocketgraph.labels" . | nindent 4 }}
+data:
+  {{- if .Values.backend.siteConfig.yml }}
+  site_config.yml: |
+{{ .Values.backend.siteConfig.yml | indent 4 }}
+  {{- end }}
+  {{- if .Values.backend.siteConfig.py }}
+  site_config.py: |
+{{ .Values.backend.siteConfig.py | indent 4 }}
+  {{- end }}
+{{- end }}
