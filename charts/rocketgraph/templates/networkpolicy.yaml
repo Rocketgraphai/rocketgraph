@@ -1,8 +1,73 @@
-{{- if and .Values.networkPolicy.enabled .Values.mongodb.enabled }}
+{{- if .Values.networkPolicy.enabled }}
+---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: {{ .Release.Name }}-mongodb-restrict-access
+  name: {{ .Release.Name }}-frontend
+  labels:
+    {{- include "rocketgraph.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app: frontend
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  policyTypes:
+    - Ingress
+  ingress:
+    - ports:
+        - port: 80
+          protocol: TCP
+        - port: 443
+          protocol: TCP
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ .Release.Name }}-backend
+  labels:
+    {{- include "rocketgraph.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app: backend
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: frontend
+              app.kubernetes.io/instance: {{ .Release.Name }}
+      ports:
+        - port: 5000
+          protocol: TCP
+{{- if .Values.xgt.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ .Release.Name }}-xgt
+  labels:
+    {{- include "rocketgraph.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app: xgt
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  policyTypes:
+    - Ingress
+  ingress:
+    - ports:
+        - port: {{ .Values.xgt.port }}
+          protocol: TCP
+{{- end }}
+{{- if .Values.mongodb.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ .Release.Name }}-mongodb
   labels:
     {{- include "rocketgraph.labels" . | nindent 4 }}
 spec:
@@ -12,6 +77,7 @@ spec:
       app.kubernetes.io/instance: {{ .Release.Name }}
   policyTypes:
     - Ingress
+    - Egress
   ingress:
     - from:
         - podSelector:
@@ -21,4 +87,36 @@ spec:
       ports:
         - port: 27017
           protocol: TCP
+  egress:
+    - ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+{{- end }}
+{{- if and .Values.xgt.licenseManager.enabled .Values.xgt.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ .Release.Name }}-license-manager
+  labels:
+    {{- include "rocketgraph.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app: xgt-license-manager
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: xgt
+              app.kubernetes.io/instance: {{ .Release.Name }}
+      ports:
+        - port: 6200
+          protocol: TCP
+{{- end }}
 {{- end }}

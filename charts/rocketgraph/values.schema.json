@@ -11,16 +11,6 @@
         "type": "object"
       }
     },
-    "imageVersions": {
-      "type": "object",
-      "description": "Per-component image version overrides. Takes precedence over each component's image.tag. Falls back to Chart.appVersion if both are empty.",
-      "additionalProperties": false,
-      "properties": {
-        "frontend": { "type": "string", "default": "" },
-        "backend": { "type": "string", "default": "" },
-        "xgt": { "type": "string", "default": "" }
-      }
-    },
     "frontend": {
       "type": "object",
       "description": "Frontend component configuration",
@@ -44,7 +34,11 @@
             "pullPolicy": {
               "type": "string",
               "description": "Image pull policy",
-              "enum": ["Always", "IfNotPresent", "Never"],
+              "enum": [
+                "Always",
+                "IfNotPresent",
+                "Never"
+              ],
               "default": "IfNotPresent"
             }
           }
@@ -71,11 +65,17 @@
               "default": false
             },
             "minAvailable": {
-              "type": ["integer", "string"],
+              "type": [
+                "integer",
+                "string"
+              ],
               "description": "Minimum number of pods that must be available (integer or percentage e.g. '50%'). Default of 1 blocks node drains on single-replica deployments — consider 0 or use maxUnavailable instead."
             },
             "maxUnavailable": {
-              "type": ["integer", "string"],
+              "type": [
+                "integer",
+                "string"
+              ],
               "description": "Maximum number of pods that can be unavailable (integer or percentage string e.g. '50%')"
             }
           }
@@ -126,7 +126,11 @@
             "type": {
               "type": "string",
               "description": "Kubernetes service type",
-              "enum": ["ClusterIP", "NodePort", "LoadBalancer"],
+              "enum": [
+                "ClusterIP",
+                "NodePort",
+                "LoadBalancer"
+              ],
               "default": "ClusterIP"
             },
             "httpPort": {
@@ -253,7 +257,11 @@
             "pullPolicy": {
               "type": "string",
               "description": "Image pull policy",
-              "enum": ["Always", "IfNotPresent", "Never"],
+              "enum": [
+                "Always",
+                "IfNotPresent",
+                "Never"
+              ],
               "default": "IfNotPresent"
             }
           }
@@ -262,18 +270,6 @@
           "type": "integer",
           "description": "Number of backend replicas",
           "default": 1
-        },
-        "autoscaling": {
-          "type": "object",
-          "description": "Controls ownership of replica count for backend",
-          "additionalProperties": false,
-          "properties": {
-            "enabled": {
-              "type": "boolean",
-              "description": "When true, omit Deployment.spec.replicas so an HPA or kubectl scale can manage replicas",
-              "default": false
-            }
-          }
         },
         "resources": {
           "type": "object",
@@ -292,11 +288,17 @@
               "default": false
             },
             "minAvailable": {
-              "type": ["integer", "string"],
+              "type": [
+                "integer",
+                "string"
+              ],
               "description": "Minimum number of pods that must be available (integer or percentage e.g. '50%'). Default of 1 blocks node drains on single-replica deployments — consider 0 or use maxUnavailable instead."
             },
             "maxUnavailable": {
-              "type": ["integer", "string"],
+              "type": [
+                "integer",
+                "string"
+              ],
               "description": "Maximum number of pods that can be unavailable (integer or percentage string e.g. '50%')"
             }
           }
@@ -454,12 +456,18 @@
               "default": ""
             },
             "MC_PORT": {
-              "type": ["string", "integer"],
+              "type": [
+                "string",
+                "integer"
+              ],
               "description": "Frontend HTTP port passed to the backend for OIDC redirect URI construction. Defaults to frontend.service.httpPort.",
               "default": ""
             },
             "MC_SSL_PORT": {
-              "type": ["string", "integer"],
+              "type": [
+                "string",
+                "integer"
+              ],
               "description": "Frontend HTTPS port passed to the backend for OIDC redirect URI construction. Defaults to frontend.service.httpsPort.",
               "default": ""
             }
@@ -669,13 +677,17 @@
             },
             "tag": {
               "type": "string",
-              "description": "Container image tag (defaults to Chart.appVersion)",
-              "default": "latest"
+              "description": "MongoDB image tag",
+              "default": ""
             },
             "pullPolicy": {
               "type": "string",
               "description": "Image pull policy",
-              "enum": ["Always", "IfNotPresent", "Never"],
+              "enum": [
+                "Always",
+                "IfNotPresent",
+                "Never"
+              ],
               "default": "IfNotPresent"
             }
           }
@@ -702,11 +714,17 @@
               "default": false
             },
             "minAvailable": {
-              "type": ["integer", "string"],
+              "type": [
+                "integer",
+                "string"
+              ],
               "description": "Minimum number of pods that must be available (integer or percentage e.g. '50%'). Default of 1 blocks node drains on single-replica deployments — consider 0 or use maxUnavailable instead."
             },
             "maxUnavailable": {
-              "type": ["integer", "string"],
+              "type": [
+                "integer",
+                "string"
+              ],
               "description": "Maximum number of pods that can be unavailable (integer or percentage string e.g. '50%')"
             }
           }
@@ -823,17 +841,89 @@
             },
             "existingSecret": {
               "type": "string",
-              "description": "Name of an existing Secret containing keys 'mongodb-root-username' and 'mongodb-root-password'",
-              "default": ""
-            },
-            "rootUsername": {
-              "type": "string",
-              "description": "MongoDB root username (ignored if existingSecret is set)",
+              "description": "Name of an existing Secret containing key 'mongodb-root-password' (the root user is always 'rocketgraph')",
               "default": ""
             },
             "rootPassword": {
               "type": "string",
-              "description": "MongoDB root password (ignored if existingSecret is set)",
+              "description": "MongoDB root password (ignored if existingSecret is set). The root user is always 'rocketgraph'",
+              "default": ""
+            }
+          }
+        },
+        "tls": {
+          "type": "object",
+          "description": "TLS configuration for MongoDB connections",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Enable TLS for MongoDB connections",
+              "default": false
+            },
+            "existingSecret": {
+              "type": "string",
+              "description": "Existing Secret with keys: server.pem (cert+key concatenated); optional: ca.pem, client.pem",
+              "default": ""
+            },
+            "cert": {
+              "type": "string",
+              "description": "Inline server cert PEM",
+              "default": ""
+            },
+            "key": {
+              "type": "string",
+              "description": "Inline server key PEM",
+              "default": ""
+            },
+            "caCert": {
+              "type": "string",
+              "description": "Inline CA cert PEM — used by the backend to verify the server and by mongod for mTLS",
+              "default": ""
+            },
+            "mode": {
+              "type": "string",
+              "description": "mongod TLS mode",
+              "enum": [
+                "requireTLS",
+                "preferTLS",
+                "allowTLS"
+              ],
+              "default": "requireTLS"
+            },
+            "mtls": {
+              "type": "boolean",
+              "description": "Require the backend to present a client cert; needs ca.pem + client.pem in existingSecret",
+              "default": false
+            },
+            "clientCert": {
+              "type": "string",
+              "default": ""
+            },
+            "clientKey": {
+              "type": "string",
+              "default": ""
+            }
+          }
+        },
+        "encryption": {
+          "type": "object",
+          "description": "Encryption at rest — requires MongoDB Enterprise or Percona Server for MongoDB",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Enable encryption at rest",
+              "default": false
+            },
+            "existingSecret": {
+              "type": "string",
+              "description": "Existing Secret with key: encryption.key",
+              "default": ""
+            },
+            "key": {
+              "type": "string",
+              "description": "Inline encryption key",
               "default": ""
             }
           }
@@ -890,7 +980,11 @@
             "pullPolicy": {
               "type": "string",
               "description": "Image pull policy",
-              "enum": ["Always", "IfNotPresent", "Never"],
+              "enum": [
+                "Always",
+                "IfNotPresent",
+                "Never"
+              ],
               "default": "IfNotPresent"
             }
           }
@@ -917,11 +1011,17 @@
               "default": false
             },
             "minAvailable": {
-              "type": ["integer", "string"],
+              "type": [
+                "integer",
+                "string"
+              ],
               "description": "Minimum number of pods that must be available (integer or percentage e.g. '50%'). Default of 1 blocks node drains on single-replica deployments — consider 0 or use maxUnavailable instead."
             },
             "maxUnavailable": {
-              "type": ["integer", "string"],
+              "type": [
+                "integer",
+                "string"
+              ],
               "description": "Maximum number of pods that can be unavailable (integer or percentage string e.g. '50%')"
             }
           }
@@ -977,7 +1077,11 @@
             "type": {
               "type": "string",
               "description": "Kubernetes service type",
-              "enum": ["ClusterIP", "NodePort", "LoadBalancer"],
+              "enum": [
+                "ClusterIP",
+                "NodePort",
+                "LoadBalancer"
+              ],
               "default": "ClusterIP"
             },
             "annotations": {
@@ -1249,6 +1353,243 @@
               "default": 4366
             }
           }
+        },
+        "licenseManager": {
+          "type": "object",
+          "description": "xGT License Manager — standalone deployment serving license files over port 6200. Multiple xGT instances connect to it by service name; license.location is set automatically.",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Enable the license manager deployment",
+              "default": false
+            },
+            "image": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "repository": {
+                  "type": "string",
+                  "description": "License manager image repository",
+                  "default": "docker.io/rocketgraph/xgt-license-manager"
+                },
+                "tag": {
+                  "type": "string",
+                  "description": "License manager image tag",
+                  "default": ""
+                },
+                "pullPolicy": {
+                  "type": "string",
+                  "description": "Image pull policy",
+                  "default": "IfNotPresent"
+                }
+              }
+            },
+            "resources": {
+              "type": "object",
+              "description": "Resource requests and limits",
+              "default": {}
+            },
+            "podSecurityContext": {
+              "type": "object",
+              "description": "Pod-level security context",
+              "default": {}
+            },
+            "containerSecurityContext": {
+              "type": "object",
+              "description": "Container-level security context",
+              "default": {}
+            },
+            "podAnnotations": {
+              "type": "object",
+              "description": "Extra annotations for the license manager pod",
+              "default": {}
+            },
+            "nodeSelector": {
+              "type": "object",
+              "description": "Node selector constraints",
+              "default": {}
+            },
+            "tolerations": {
+              "type": "array",
+              "description": "Tolerations for pod scheduling",
+              "default": []
+            },
+            "affinity": {
+              "type": "object",
+              "description": "Affinity rules for pod scheduling",
+              "default": {}
+            },
+            "service": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "description": "Kubernetes service type",
+                  "default": "ClusterIP"
+                },
+                "annotations": {
+                  "type": "object",
+                  "description": "Extra annotations for the service",
+                  "default": {}
+                }
+              }
+            },
+            "startupProbe": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "periodSeconds": {
+                  "type": "integer",
+                  "default": 10
+                },
+                "timeoutSeconds": {
+                  "type": "integer",
+                  "default": 5
+                },
+                "failureThreshold": {
+                  "type": "integer",
+                  "default": 30
+                }
+              }
+            },
+            "readinessProbe": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "periodSeconds": {
+                  "type": "integer",
+                  "default": 10
+                },
+                "timeoutSeconds": {
+                  "type": "integer",
+                  "default": 5
+                },
+                "failureThreshold": {
+                  "type": "integer",
+                  "default": 3
+                }
+              }
+            },
+            "livenessProbe": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "periodSeconds": {
+                  "type": "integer",
+                  "default": 30
+                },
+                "timeoutSeconds": {
+                  "type": "integer",
+                  "default": 5
+                },
+                "failureThreshold": {
+                  "type": "integer",
+                  "default": 3
+                }
+              }
+            },
+            "licenseFiles": {
+              "type": "object",
+              "description": "License files to mount into /conf/licenses/. Each key in the secret becomes a file.",
+              "additionalProperties": false,
+              "properties": {
+                "existingSecret": {
+                  "type": "string",
+                  "description": "Name of an existing Secret whose keys are mounted as license files under /conf/licenses/",
+                  "default": ""
+                },
+                "data": {
+                  "type": "object",
+                  "description": "Map of filename to license file content (creates a Secret)",
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "default": {}
+                }
+              }
+            },
+            "persistence": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "conf": {
+                  "type": "object",
+                  "description": "PVC for /conf — place license files in /conf/licenses/",
+                  "additionalProperties": false,
+                  "properties": {
+                    "size": {
+                      "type": "string",
+                      "description": "PVC storage size",
+                      "default": "1Gi"
+                    },
+                    "storageClassName": {
+                      "type": "string",
+                      "description": "StorageClass name. Uses the cluster default if empty.",
+                      "default": ""
+                    },
+                    "existingClaim": {
+                      "type": "string",
+                      "description": "Name of an existing PVC to use instead of creating one",
+                      "default": ""
+                    }
+                  }
+                },
+                "log": {
+                  "type": "object",
+                  "description": "PVC for /log",
+                  "additionalProperties": false,
+                  "properties": {
+                    "size": {
+                      "type": "string",
+                      "description": "PVC storage size",
+                      "default": "1Gi"
+                    },
+                    "storageClassName": {
+                      "type": "string",
+                      "description": "StorageClass name. Uses the cluster default if empty.",
+                      "default": ""
+                    },
+                    "existingClaim": {
+                      "type": "string",
+                      "description": "Name of an existing PVC to use instead of creating one",
+                      "default": ""
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "fips": {
+      "type": "object",
+      "description": "FIPS 140-2 compliance configuration",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Enable FIPS mode: appends -fips to image tags for frontend, backend, xgt, and the license manager; switches MongoDB to percona/percona-server-mongodb.",
+          "default": false
+        },
+        "mongoImage": {
+          "type": "object",
+          "description": "FIPS-compliant MongoDB image (used when fips.enabled=true)",
+          "additionalProperties": false,
+          "properties": {
+            "repository": {
+              "type": "string",
+              "description": "FIPS MongoDB image repository",
+              "default": "docker.io/percona/percona-server-mongodb"
+            },
+            "tag": {
+              "type": "string",
+              "description": "FIPS MongoDB image tag",
+              "default": ""
+            }
+          }
         }
       }
     },
@@ -1261,6 +1602,15 @@
           "type": "boolean",
           "description": "Enable OpenShift compatibility mode",
           "default": false
+        },
+        "scc": {
+          "type": "string",
+          "description": "SCC to grant: anyuid (required for fixed-UID images) or nonroot",
+          "default": "anyuid",
+          "enum": [
+            "anyuid",
+            "nonroot"
+          ]
         }
       }
     },
@@ -1273,6 +1623,65 @@
           "type": "boolean",
           "description": "Enable NetworkPolicy resources to restrict pod traffic",
           "default": true
+        }
+      }
+    },
+    "ingress": {
+      "type": "object",
+      "description": "Ingress resource for external access to the frontend",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false
+        },
+        "className": {
+          "type": "string",
+          "default": ""
+        },
+        "annotations": {
+          "type": "object"
+        },
+        "hosts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "host",
+              "paths"
+            ],
+            "properties": {
+              "host": {
+                "type": "string"
+              },
+              "paths": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "path"
+                  ],
+                  "properties": {
+                    "path": {
+                      "type": "string"
+                    },
+                    "pathType": {
+                      "type": "string",
+                      "default": "Prefix"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tls": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
         }
       }
     }

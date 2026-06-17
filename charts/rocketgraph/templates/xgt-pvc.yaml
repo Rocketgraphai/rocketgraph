@@ -1,4 +1,5 @@
 {{- if and .Values.xgt.enabled (not .Values.xgt.persistence.data.existingClaim) }}
+---
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -16,8 +17,8 @@ spec:
   storageClassName: {{ .Values.xgt.persistence.data.storageClassName | quote }}
   {{- end }}
 {{- end }}
----
 {{- if and .Values.xgt.enabled (not .Values.xgt.persistence.log.existingClaim) }}
+---
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -33,5 +34,43 @@ spec:
       storage: {{ .Values.xgt.persistence.log.size }}
   {{- if .Values.xgt.persistence.log.storageClassName }}
   storageClassName: {{ .Values.xgt.persistence.log.storageClassName | quote }}
+  {{- end }}
+{{- end }}
+{{- if and .Values.xgt.licenseManager.enabled (not .Values.xgt.licenseManager.persistence.conf.existingClaim) }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ .Release.Name }}-license-manager-conf
+  labels:
+    app: xgt-license-manager
+    {{- include "rocketgraph.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.xgt.licenseManager.persistence.conf.size }}
+  {{- if .Values.xgt.licenseManager.persistence.conf.storageClassName }}
+  storageClassName: {{ .Values.xgt.licenseManager.persistence.conf.storageClassName | quote }}
+  {{- end }}
+{{- end }}
+{{- if and .Values.xgt.licenseManager.enabled (not .Values.xgt.licenseManager.persistence.log.existingClaim) }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ .Release.Name }}-license-manager-log
+  labels:
+    app: xgt-license-manager
+    {{- include "rocketgraph.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.xgt.licenseManager.persistence.log.size }}
+  {{- if .Values.xgt.licenseManager.persistence.log.storageClassName }}
+  storageClassName: {{ .Values.xgt.licenseManager.persistence.log.storageClassName | quote }}
   {{- end }}
 {{- end }}

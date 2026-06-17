@@ -1,4 +1,81 @@
 ---
+# Source: rocketgraph/templates/networkpolicy.yaml
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: test-release-frontend
+  labels:
+    helm.sh/chart: rocketgraph-0.2.0
+    app.kubernetes.io/name: rocketgraph
+    app.kubernetes.io/version: "2.6.1"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/instance: test-release
+spec:
+  podSelector:
+    matchLabels:
+      app: frontend
+      app.kubernetes.io/instance: test-release
+  policyTypes:
+    - Ingress
+  ingress:
+    - ports:
+        - port: 80
+          protocol: TCP
+        - port: 443
+          protocol: TCP
+---
+# Source: rocketgraph/templates/networkpolicy.yaml
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: test-release-backend
+  labels:
+    helm.sh/chart: rocketgraph-0.2.0
+    app.kubernetes.io/name: rocketgraph
+    app.kubernetes.io/version: "2.6.1"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/instance: test-release
+spec:
+  podSelector:
+    matchLabels:
+      app: backend
+      app.kubernetes.io/instance: test-release
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: frontend
+              app.kubernetes.io/instance: test-release
+      ports:
+        - port: 5000
+          protocol: TCP
+---
+# Source: rocketgraph/templates/networkpolicy.yaml
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: test-release-xgt
+  labels:
+    helm.sh/chart: rocketgraph-0.2.0
+    app.kubernetes.io/name: rocketgraph
+    app.kubernetes.io/version: "2.6.1"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/instance: test-release
+spec:
+  podSelector:
+    matchLabels:
+      app: xgt
+      app.kubernetes.io/instance: test-release
+  policyTypes:
+    - Ingress
+  ingress:
+    - ports:
+        - port: 4367
+          protocol: TCP
+
+---
 # Source: rocketgraph/templates/backend-odbc-configmap.yaml
 apiVersion: v1
 kind: ConfigMap
@@ -6,9 +83,9 @@ metadata:
   name: test-release-backend-odbc-config
   labels:
     app: backend
-    helm.sh/chart: rocketgraph-0.1.0
+    helm.sh/chart: rocketgraph-0.2.0
     app.kubernetes.io/name: rocketgraph
-    app.kubernetes.io/version: "2.6.0"
+    app.kubernetes.io/version: "2.6.1"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/instance: test-release
 data:
@@ -46,6 +123,7 @@ data:
     Debug=0
     CommLog=1
     UsageCount=1
+
 ---
 # Source: rocketgraph/templates/xgt-configmap.yaml
 apiVersion: v1
@@ -54,9 +132,9 @@ metadata:
   name: test-release-xgt-config
   labels:
     app: xgt
-    helm.sh/chart: rocketgraph-0.1.0
+    helm.sh/chart: rocketgraph-0.2.0
     app.kubernetes.io/name: rocketgraph
-    app.kubernetes.io/version: "2.6.0"
+    app.kubernetes.io/version: "2.6.1"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/instance: test-release
 data:
@@ -101,6 +179,7 @@ data:
       "system.usemtls": "false",
       "system.usessl": "false"
     }
+
 ---
 # Source: rocketgraph/templates/xgt-pvc.yaml
 apiVersion: v1
@@ -109,9 +188,9 @@ metadata:
   name: test-release-xgt-data
   labels:
     app: xgt
-    helm.sh/chart: rocketgraph-0.1.0
+    helm.sh/chart: rocketgraph-0.2.0
     app.kubernetes.io/name: rocketgraph
-    app.kubernetes.io/version: "2.6.0"
+    app.kubernetes.io/version: "2.6.1"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/instance: test-release
 spec:
@@ -128,9 +207,9 @@ metadata:
   name: test-release-xgt-log
   labels:
     app: xgt
-    helm.sh/chart: rocketgraph-0.1.0
+    helm.sh/chart: rocketgraph-0.2.0
     app.kubernetes.io/name: rocketgraph
-    app.kubernetes.io/version: "2.6.0"
+    app.kubernetes.io/version: "2.6.1"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/instance: test-release
 spec:
@@ -139,6 +218,7 @@ spec:
   resources:
     requests:
       storage: 1Gi
+
 ---
 # Source: rocketgraph/templates/backend-service.yaml
 apiVersion: v1
@@ -147,9 +227,9 @@ metadata:
   name: test-release-backend
   labels:
     app: backend
-    helm.sh/chart: rocketgraph-0.1.0
+    helm.sh/chart: rocketgraph-0.2.0
     app.kubernetes.io/name: rocketgraph
-    app.kubernetes.io/version: "2.6.0"
+    app.kubernetes.io/version: "2.6.1"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/instance: test-release
 spec:
@@ -162,6 +242,7 @@ spec:
   selector:
     app: backend
     app.kubernetes.io/instance: test-release
+
 ---
 # Source: rocketgraph/templates/frontend-service.yaml
 apiVersion: v1
@@ -170,9 +251,9 @@ metadata:
   name: test-release-frontend
   labels:
     app: frontend
-    helm.sh/chart: rocketgraph-0.1.0
+    helm.sh/chart: rocketgraph-0.2.0
     app.kubernetes.io/name: rocketgraph
-    app.kubernetes.io/version: "2.6.0"
+    app.kubernetes.io/version: "2.6.1"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/instance: test-release
 spec:
@@ -187,6 +268,7 @@ spec:
   selector:
     app: frontend
     app.kubernetes.io/instance: test-release
+
 ---
 # Source: rocketgraph/templates/xgt-service.yaml
 apiVersion: v1
@@ -195,9 +277,9 @@ metadata:
   name: test-release-xgt
   labels:
     app: xgt
-    helm.sh/chart: rocketgraph-0.1.0
+    helm.sh/chart: rocketgraph-0.2.0
     app.kubernetes.io/name: rocketgraph
-    app.kubernetes.io/version: "2.6.0"
+    app.kubernetes.io/version: "2.6.1"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/instance: test-release
 spec:
@@ -210,6 +292,7 @@ spec:
   selector:
     app: xgt
     app.kubernetes.io/instance: test-release
+
 ---
 # Source: rocketgraph/templates/backend-deployment.yaml
 apiVersion: apps/v1
@@ -218,9 +301,9 @@ metadata:
   name: test-release-backend
   labels:
     app: backend
-    helm.sh/chart: rocketgraph-0.1.0
+    helm.sh/chart: rocketgraph-0.2.0
     app.kubernetes.io/name: rocketgraph
-    app.kubernetes.io/version: "2.6.0"
+    app.kubernetes.io/version: "2.6.1"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/instance: test-release
 spec:
@@ -235,12 +318,14 @@ spec:
         app: backend
         app.kubernetes.io/instance: test-release
       annotations:
-        checksum/odbc-config: a31521a0c3e811ebe09e9c63d4639d9e828db296e5e129f718d4b88c3cc07253
+        checksum/odbc-config: ee82fd678535bd20c7ac7658e79435391579277d88c1b2ec8f5563abc53da676
     spec:
       containers:
         - name: backend
-          image: "docker.io/rocketgraph/mission-control-backend:2.6.0"
+          image: "docker.io/rocketgraph/mission-control-backend:2.6.1"
           imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
           ports:
             - name: http
               containerPort: 5000
@@ -295,6 +380,7 @@ spec:
         - name: odbc-config
           configMap:
             name: test-release-backend-odbc-config
+
 ---
 # Source: rocketgraph/templates/frontend-deployment.yaml
 apiVersion: apps/v1
@@ -303,9 +389,9 @@ metadata:
   name: test-release-frontend
   labels:
     app: frontend
-    helm.sh/chart: rocketgraph-0.1.0
+    helm.sh/chart: rocketgraph-0.2.0
     app.kubernetes.io/name: rocketgraph
-    app.kubernetes.io/version: "2.6.0"
+    app.kubernetes.io/version: "2.6.1"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/instance: test-release
 spec:
@@ -322,8 +408,10 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: "docker.io/rocketgraph/mission-control-frontend:2.6.0"
+          image: "docker.io/rocketgraph/mission-control-frontend:2.6.1"
           imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
           env:
             - name: BACKEND_HOST
               value: "test-release-backend"
@@ -352,6 +440,7 @@ spec:
             timeoutSeconds: 5
             failureThreshold: 3
       restartPolicy: Always
+
 ---
 # Source: rocketgraph/templates/xgt-deployment.yaml
 apiVersion: apps/v1
@@ -360,9 +449,9 @@ metadata:
   name: test-release-xgt
   labels:
     app: xgt
-    helm.sh/chart: rocketgraph-0.1.0
+    helm.sh/chart: rocketgraph-0.2.0
     app.kubernetes.io/name: rocketgraph
-    app.kubernetes.io/version: "2.6.0"
+    app.kubernetes.io/version: "2.6.1"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/instance: test-release
 spec:
@@ -379,12 +468,14 @@ spec:
         app: xgt
         app.kubernetes.io/instance: test-release
       annotations:
-        checksum/config: 024f796f510c7fa02b89012a13f9a998acbd25860be2079a3404078807c15d04
+        checksum/config: 356a66cf626c90f7e18179fdbbc1d8bc71677a591a9f02527aeebef0705a7be1
     spec:
       containers:
         - name: xgt
-          image: "docker.io/rocketgraph/xgt:2.6.0"
+          image: "docker.io/rocketgraph/xgt:2.6.1"
           imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
           ports:
             - name: xgt
               containerPort: 4367

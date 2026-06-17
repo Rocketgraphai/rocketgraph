@@ -6,9 +6,7 @@ metadata:
     app: backend
     {{- include "rocketgraph.labels" . | nindent 4 }}
 spec:
-  {{- if not .Values.backend.autoscaling.enabled }}
   replicas: {{ .Values.backend.replicas }}
-  {{- end }}
   selector:
     matchLabels:
       app: backend
@@ -48,7 +46,7 @@ spec:
       {{- end }}
       containers:
         - name: backend
-          image: "{{ .Values.backend.image.repository }}:{{ coalesce .Values.imageVersions.backend .Values.backend.image.tag .Chart.AppVersion }}"
+          image: "{{ .Values.backend.image.repository }}:{{ coalesce .Values.backend.image.tag .Chart.AppVersion }}{{ include "rocketgraph.fipsSuffix" . }}"
           imagePullPolicy: {{ .Values.backend.image.pullPolicy }}
           {{- with .Values.backend.containerSecurityContext }}
           securityContext:
@@ -60,22 +58,26 @@ spec:
               protocol: TCP
           env:
             {{- if .Values.mongodb.enabled }}
+            {{- $mongoHost := include "rocketgraph.fullname.mongodb" . }}
+            {{- $mongoTlsParams := "" }}
+            {{- if .Values.mongodb.tls.enabled }}
+            {{- $mongoTlsParams = "&tls=true&tlsCAFile=/etc/ssl/certs/mongodb-ca.pem" }}
+            {{- if .Values.mongodb.tls.mtls }}
+            {{- $mongoTlsParams = printf "%s&tlsCertificateKeyFile=/etc/ssl/mongodb/client.pem" $mongoTlsParams }}
+            {{- end }}
+            {{- end }}
             {{- if .Values.mongodb.auth.enabled }}
-            - name: MONGO_USER
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "rocketgraph.mongodbAuthSecret" . }}
-                  key: mongodb-root-username
+            {{- /* Single bundled root user, always "rocketgraph" (see mongodb-auth-secret.yaml). */}}
             - name: MONGO_PASS
               valueFrom:
                 secretKeyRef:
                   name: {{ include "rocketgraph.mongodbAuthSecret" . }}
                   key: mongodb-root-password
             - name: MC_MONGO_URI
-              value: "mongodb://$(MONGO_USER):$(MONGO_PASS)@{{ include "rocketgraph.fullname.mongodb" . }}:27017"
+              value: "mongodb://rocketgraph:$(MONGO_PASS)@{{ $mongoHost }}:27017/?authSource=admin{{ $mongoTlsParams }}"
             {{- else }}
             - name: MC_MONGO_URI
-              value: "mongodb://{{ include "rocketgraph.fullname.mongodb" . }}:27017"
+              value: "mongodb://{{ $mongoHost }}:27017{{ if $mongoTlsParams }}/?{{ trimPrefix "&" $mongoTlsParams }}{{ end }}"
             {{- end }}
             {{- else }}
             - name: MC_MONGO_URI
@@ -226,6 +228,18 @@ spec:
               subPath: oidc-ca.pem
               readOnly: true
             {{- end }}
+            {{- if and .Values.mongodb.tls.enabled (or .Values.mongodb.tls.caCert .Values.mongodb.tls.existingSecret) }}
+            - name: mongodb-tls-ca
+              mountPath: /etc/ssl/certs/mongodb-ca.pem
+              subPath: ca.pem
+              readOnly: true
+            {{- end }}
+            {{- if and .Values.mongodb.tls.enabled .Values.mongodb.tls.mtls (or .Values.mongodb.tls.caCert .Values.mongodb.tls.existingSecret) }}
+            - name: mongodb-tls-ca
+              mountPath: /etc/ssl/mongodb/client.pem
+              subPath: client.pem
+              readOnly: true
+            {{- end }}
       {{- with .Values.backend.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
@@ -268,4 +282,9 @@ spec:
         - name: oidc-ca-cert
           secret:
             secretName: {{ include "rocketgraph.backendOidcCaSecret" . }}
+        {{- end }}
+        {{- if and .Values.mongodb.tls.enabled (or .Values.mongodb.tls.caCert .Values.mongodb.tls.existingSecret) }}
+        - name: mongodb-tls-ca
+          secret:
+            secretName: {{ include "rocketgraph.mongodbTlsSecret" . }}
         {{- end }}

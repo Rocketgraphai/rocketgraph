@@ -39,6 +39,17 @@ Resource name helpers — prefix every name with the release name.
 {{- printf "%s-rocketgraph" .Release.Name | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
+{{- define "rocketgraph.fullname.licenseManager" -}}
+{{- printf "%s-xgt-license-manager" .Release.Name | trunc 63 | trimSuffix "-" }}
+{{- end }}
+
+{{/*
+License Manager license files secret name
+*/}}
+{{- define "rocketgraph.licenseManagerLicenseSecret" -}}
+{{- .Values.xgt.licenseManager.licenseFiles.existingSecret | default (printf "%s-license-manager-licenses" .Release.Name) }}
+{{- end }}
+
 {{/*
 Frontend TLS secret name
 */}}
@@ -59,6 +70,20 @@ MongoDB auth secret name
 */}}
 {{- define "rocketgraph.mongodbAuthSecret" -}}
 {{- .Values.mongodb.auth.existingSecret | default (printf "%s-mongodb-auth" .Release.Name) }}
+{{- end }}
+
+{{/*
+MongoDB TLS secret name
+*/}}
+{{- define "rocketgraph.mongodbTlsSecret" -}}
+{{- .Values.mongodb.tls.existingSecret | default (printf "%s-mongodb-tls" .Release.Name) }}
+{{- end }}
+
+{{/*
+MongoDB encryption secret name
+*/}}
+{{- define "rocketgraph.mongodbEncryptionSecret" -}}
+{{- .Values.mongodb.encryption.existingSecret | default (printf "%s-mongodb-encryption" .Release.Name) }}
 {{- end }}
 
 {{/*
@@ -95,6 +120,24 @@ Backend OIDC CA cert secret name
 {{- define "rocketgraph.backendOidcCaSecret" -}}
 {{- .Values.backend.oidc.caCertExistingSecret | default (printf "%s-backend-oidc-ca" .Release.Name) }}
 {{- end }}
+
+{{/*
+FIPS image tag suffix — appends "-fips" when fips.enabled=true, empty otherwise.
+*/}}
+{{- define "rocketgraph.fipsSuffix" -}}
+{{- if .Values.fips.enabled }}-fips{{- end -}}
+{{- end -}}
+
+{{/*
+MongoDB image — switches to the FIPS image (Percona) when fips.enabled=true.
+*/}}
+{{- define "rocketgraph.mongoImage" -}}
+{{- if .Values.fips.enabled -}}
+{{ .Values.fips.mongoImage.repository }}:{{ .Values.fips.mongoImage.tag }}
+{{- else -}}
+{{ .Values.mongodb.image.repository }}:{{ .Values.mongodb.image.tag }}
+{{- end -}}
+{{- end -}}
 
 {{/*
 PodDisruptionBudget — usage: {{ include "rocketgraph.pdb" (list "frontend" .) }}

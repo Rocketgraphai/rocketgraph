@@ -34,7 +34,7 @@ spec:
       {{- end }}
       containers:
         - name: frontend
-          image: "{{ .Values.frontend.image.repository }}:{{ coalesce .Values.imageVersions.frontend .Values.frontend.image.tag .Chart.AppVersion }}"
+          image: "{{ .Values.frontend.image.repository }}:{{ coalesce .Values.frontend.image.tag .Chart.AppVersion }}{{ include "rocketgraph.fipsSuffix" . }}"
           imagePullPolicy: {{ .Values.frontend.image.pullPolicy }}
           {{- with .Values.frontend.containerSecurityContext }}
           securityContext:

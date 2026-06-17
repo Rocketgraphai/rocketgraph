@@ -38,7 +38,18 @@ Rocketgraph Mission Control uses Docker Compose with these Docker images:
  - [rocketgraph/xgt](https://hub.docker.com/r/rocketgraph/xgt)
  - [rocketgraph/mission-control-frontend](https://hub.docker.com/r/rocketgraph/mission-control-frontend)
  - [rocketgraph/mission-control-backend](https://hub.docker.com/r/rocketgraph/mission-control-backend)
- - [mongo](https://hub.docker.com/_/mongo)
+ - [mongo](https://hub.docker.com/_/mongo) or [percona](https://hub.docker.com/r/percona/percona-server-mongodb)
+
+Three Compose files are provided:
+ - `docker-compose.yml` — the base stack, used by default (`docker compose up -d`).
+ - `docker-compose.fips.yml` — optional FIPS overlay (see [FIPS Deployment](#fips-deployment)).
+ - `docker-compose.license-manager.yml` — optional xGT License Manager overlay (see [xGT License Manager](#xgt-license-manager)).
+
+The overlays layer on top of the base — keep `docker-compose.yml` alongside them and combine with `-f`:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.fips.yml up -d
+```
 
 Rocketgraph Mission Control can be run using either Docker Desktop or Docker Engine only.  Further references to Docker Engine in the Installation section refer to a Docker Engine install without Docker Desktop.
 
@@ -148,8 +159,8 @@ The configurable environment variables are:
 
 |Variable                |Volume Mapped|Description|
 |------------------------|-|-----------|
-|MC_FRONTEND_IMAGE       | |image location for MC frontend, default is latest on Docker Hub|
-|MC_BACKEND_IMAGE        | |image location for MC backend, default is latest on Docker Hub|
+|MC_FRONTEND_IMAGE       | |image location for MC frontend; default is the version pinned in docker-compose.yml|
+|MC_BACKEND_IMAGE        | |image location for MC backend; default is the version pinned in docker-compose.yml|
 |MC_PORT                 | |alternative port for the http web server|
 |MC_SSL_PORT             | |alternative port for the https web server|
 |MC_DEFAULT_XGT_HOST     | |default login host for Mission Control|
@@ -158,7 +169,16 @@ The configurable environment variables are:
 |MC_ODBC_LIBRARY_PATH    | |directory for IBM i driver libraries|
 |MC_ODBC_PATH            |Y|path to ODBC drivers for the connector|
 |MC_MONGODB_IMAGE        | |used to specify the mongodb image for Power10 installs|
-|MC_MONGO_URI            | |location of the database used by Mission Control|
+|MC_MONGO_PASSWORD       | |MongoDB root password; set it to enable MongoDB auth (`--auth` + `?authSource=admin`). The root user is always `rocketgraph`; leave unset for no auth|
+|MC_MONGO_TLS_ENABLED    | |set to `true` to enable TLS between the backend and MongoDB; requires `MC_MONGO_TLS_SERVER_PEM` and `MC_MONGO_TLS_CA_PEM`|
+|MC_MONGO_TLS_MODE       | |mongod TLS server mode: `requireTLS` (default), `preferTLS`, or `allowTLS`; use `preferTLS`/`allowTLS` for migrations|
+|MC_MONGO_MTLS_ENABLED   | |set to `true` to require client certs (mutual TLS); off by default (server-only TLS); needs `MC_MONGO_TLS_CLIENT_PEM`|
+|MC_MONGO_TLS_CLIENT_PEM |Y|path to the client cert+key PEM the backend presents under mTLS; required when mTLS is enabled|
+|MC_MONGO_TLS_SERVER_PEM |Y|path to MongoDB server cert+key PEM (concatenated); used when `MC_MONGO_TLS_ENABLED=true`|
+|MC_MONGO_TLS_CA_PEM     |Y|path to MongoDB CA cert PEM; used when `MC_MONGO_TLS_ENABLED=true` (mounted into both mongodb and backend)|
+|MC_MONGO_ENCRYPTION_ENABLED| |set to `true` to enable MongoDB application-level encryption at rest (FIPS overlay only — requires Percona)|
+|MC_MONGO_ENCRYPTION_KEY_FILE|Y|path to a 32-byte base64-encoded key file; required when `MC_MONGO_ENCRYPTION_ENABLED=true`|
+|MC_MONGO_URI            | |location of the database used by Mission Control; auto-constructed from `MC_MONGO_PASSWORD` when set, override directly to point at an external MongoDB|
 |MC_SESSION_TTL          | |seconds from last event that MC login is valid|
 |MC_SITE_CONFIG_YML      |Y|path to site yaml config file|
 |MC_SITE_CONFIG_PY       |Y|path to site python custom LLM config file|
@@ -167,9 +187,12 @@ The configurable environment variables are:
 |MC_SSL_CERT_CHAIN       |Y|path to certificate chain used by the https web server to validate client certificates for mTLS|
 |MC_SSL_PROXY_PUBLIC_CERT|Y|path to certificate on host to use as a proxy connection to the xGT server|
 |MC_SSL_PROXY_PRIVATE_KEY|Y|path to private key on host to use as a proxy connection to the xGT server|
-|XGT_IMAGE               | |image location for XGT, default is latest on Docker Hub|
+|XGT_IMAGE               | |image location for XGT; default is the version pinned in docker-compose.yml|
 |XGT_PORT                | |port the xGT server should listen on|
-|XGT_LICENSE_FILE        |Y|path to xGT license file|
+|XGT_LICENSE_FILE        |Y|path to xGT license file (used when no license manager is enabled)|
+|MC_LICENSE_MANAGER_IMAGE| |image for the optional xGT License Manager service (`docker-compose.license-manager.yml`); switch to the `-fips` tag for FIPS deployments|
+|MC_LICENSE_MANAGER_CONF_PATH|Y|host config directory for the License Manager; place `.lic` files in its `licenses/` subdirectory (default `~/.rocketgraph/license-manager/conf`)|
+|MC_LICENSE_MANAGER_LOG_PATH|Y|host log directory for the License Manager (default `~/.rocketgraph/license-manager/log`)|
 |XGT_CONF_PATH           |Y|path to the configuration directory on host for the xGT server|
 |XGT_DATA_PATH           |Y|path to the data directory on host for the xGT server|
 |XGT_LOG_PATH            |Y|path to the log directory on host for the xGT server|
@@ -221,12 +244,12 @@ The variables that are volume mapped map point to a file or directory on the hos
        $ docker load --input mission-control-backend.tar
        ```
 
- 1. If you need docker image versions other than latest or to get them from somewhere other than Docker Hub, set the MC_FRONTEND_IMAGE, MC_BACKEND_IMAGE, MC_MONGODB_IMAGE, and XGT_IMAGE environment variables.  For example:
+ 1. If you need docker image versions other than the pinned defaults, or to get them from somewhere other than Docker Hub, set the MC_FRONTEND_IMAGE, MC_BACKEND_IMAGE, MC_MONGODB_IMAGE, and XGT_IMAGE environment variables.  For example:
     ```dotenv
-    MC_FRONTEND_IMAGE=10.0.1.10/rocketgraph/mission-control-frontend:2.6.0
-    MC_BACKEND_IMAGE=10.0.1.10/rocketgraph/mission-control-backend:2.6.0
-    MC_MONGODB_IMAGE=10.0.1.10/library/mongo:latest
-    XGT_IMAGE=10.0.1.10/rocketgraph/xgt:2.6.0
+    MC_FRONTEND_IMAGE=10.0.1.10/rocketgraph/mission-control-frontend:<tag>
+    MC_BACKEND_IMAGE=10.0.1.10/rocketgraph/mission-control-backend:<tag>
+    MC_MONGODB_IMAGE=10.0.1.10/library/mongo:<tag>
+    XGT_IMAGE=10.0.1.10/rocketgraph/xgt:<tag>
     ```
 
  1. If running the xGT server as part of the Compose project, setup a data directory using the environment variable XGT_DATA_PATH.  The default is ~/.rocketgraph/data if XGT_DATA_PATH is not set.  For example:
@@ -282,6 +305,63 @@ The variables that are volume mapped map point to a file or directory on the hos
 ## Kubernetes / OpenShift
 
 Rocketgraph Mission Control can also be deployed on Kubernetes or OpenShift using the Helm chart in the [`charts/rocketgraph/`](charts/rocketgraph/) directory.  Refer to the [Helm chart documentation](charts/rocketgraph/README.md) for installation and configuration instructions, including OpenShift-specific setup, TLS, OIDC, LDAP, and more.
+
+For other container orchestration platforms, the [deployment reference](doc/deployment_reference.md) documents each container's images, ports, volumes, and environment variables.
+
+## MongoDB Security
+
+The bundled MongoDB ships with no authentication and no TLS by default; the `database-network` is marked `internal: true`, so MongoDB is unreachable from outside the Compose project.  Several opt-in hardening mechanisms are available, all configured in `.env`:
+
+- **Authentication** — set `MC_MONGO_PASSWORD` (the root user is always `rocketgraph`).
+- **TLS in transit** — `MC_MONGO_TLS_ENABLED` plus a server cert and CA (single-host installs don't need it — traffic stays on the internal network).
+- **Mutual TLS** — require clients to present a certificate.
+- **Encryption at rest** — available in FIPS deployments via Percona.
+
+See the [MongoDB security guide](doc/mongodb_security.md) for step-by-step setup, certificate generation, verification, and troubleshooting.
+
+## FIPS Deployment
+
+For FIPS 140-2 environments, the `docker-compose.fips.yml` overlay swaps the bundled images to their FIPS variants — Percona Server for MongoDB, and `-fips`-tagged frontend, backend, and xgt images:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.fips.yml up -d
+```
+
+When MongoDB TLS is enabled (see [MongoDB Security](#mongodb-security)), mongod is additionally started with `--tlsFIPSMode` to enforce FIPS-only cipher suites, and Percona's encryption at rest becomes available via `MC_MONGO_ENCRYPTION_ENABLED`.  For the xGT License Manager under FIPS, set `MC_LICENSE_MANAGER_IMAGE` to its `-fips` tag.
+
+## xGT License Manager
+
+By default xGT reads a single license from the file at `XGT_LICENSE_FILE`.  For deployments that need multiple licenses or live license updates without restarting xGT, the optional [`docker-compose.license-manager.yml`](docker-compose.license-manager.yml) overlay runs a dedicated license-manager service that serves licenses to xGT over port 6200.
+
+The License Manager uses host bind mounts for its config and log directories, the same pattern as the xGT service.  License files live under the config directory in a `licenses/` subdirectory (`MC_LICENSE_MANAGER_CONF_PATH` defaults to `~/.rocketgraph/license-manager/conf`, so by default that is `~/.rocketgraph/license-manager/conf/licenses/`).
+
+Setup:
+
+```bash
+# 1. Put your .lic files in the manager's licenses directory
+mkdir -p ~/.rocketgraph/license-manager/conf/licenses
+cp /path/to/*.lic ~/.rocketgraph/license-manager/conf/licenses/
+
+# 2. In your xgtd.conf (under XGT_CONF_PATH), tell xgt where to find the manager:
+#    license.location: 6200@license-manager
+
+# 3. Run with the overlay:
+docker compose -f docker-compose.yml -f docker-compose.license-manager.yml up -d
+```
+
+To use directories elsewhere, set `MC_LICENSE_MANAGER_CONF_PATH` and `MC_LICENSE_MANAGER_LOG_PATH` in `.env`.
+
+For FIPS deployments, also set `MC_LICENSE_MANAGER_IMAGE` to the `-fips` variant of the license-manager image.  The overlay composes with `docker-compose.fips.yml` cleanly — both can be passed via `-f`.
+
+## Database Maintenance
+
+The [`scripts/`](scripts/README.md) directory has helper scripts for operating the bundled MongoDB:
+
+- `db_dump.sh` / `db_restore.sh` — back up and restore the database (also used to migrate between MongoDB Community and Percona).
+- `edit_user_profile.sh` — read or edit Mission Control user profiles.
+- `generate_mongo_certs.sh` — generate the CA chain and server/client certificates for MongoDB TLS and mTLS.
+
+See the [scripts documentation](scripts/README.md) for usage and `.env` requirements.
 
 ## Database Connectivity
 

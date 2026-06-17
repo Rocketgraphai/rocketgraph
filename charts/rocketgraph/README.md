@@ -15,7 +15,14 @@ Deploys the Rocketgraph Mission Control stack on Kubernetes and OpenShift.
 helm install rocketgraph ./charts/rocketgraph -f charts/rocketgraph/values-simple.yaml
 ```
 
-That's it. All components deploy with sensible defaults. See `values-simple.yaml` for the minimal configuration and `values.yaml` for all available options.
+That's it. All components deploy with sensible defaults. The chart ships a few example overlays you can use as starting points:
+
+- [`values-simple.yaml`](values-simple.yaml) — minimal configuration (single-user mode, 10Gi xGT data volume).
+- [`values-license-manager.yaml`](values-license-manager.yaml) — enables the xGT License Manager service.
+
+For FIPS images, set `fips.enabled=true` (see [FIPS Mode](#fips-mode)).
+
+`values.yaml` is the canonical defaults file and documents every available option; you don't pass it with `-f` (it's loaded automatically).
 
 ## Prerequisites
 
@@ -35,6 +42,12 @@ helm install rocketgraph ./charts/rocketgraph
 helm install rocketgraph ./charts/rocketgraph --set openshift.enabled=true
 ```
 
+This binds the release ServiceAccount to the `anyuid` SCC, which is required when any image runs with a fixed non-root UID (e.g. Percona MongoDB at uid 1001). If all your images declare a non-root `USER` without a fixed UID, you can use the less-privileged `nonroot` SCC instead:
+
+```bash
+helm install rocketgraph ./charts/rocketgraph --set openshift.enabled=true --set openshift.scc=nonroot
+```
+
 After installing, expose the frontend and get the URL:
 
 ```bash
@@ -42,9 +55,37 @@ oc expose svc/<release-name>-frontend
 oc get route <release-name>-frontend -o jsonpath='{.spec.host}'
 ```
 
-### With xGT License
+### FIPS Mode
 
-Create a secret from your license file, then reference it:
+Set `fips.enabled=true` to use FIPS-compliant images in one step:
+
+```bash
+helm install rocketgraph ./charts/rocketgraph --set fips.enabled=true
+```
+
+Or in a values file:
+
+```yaml
+fips:
+  enabled: true
+```
+
+It makes the following changes:
+
+- **frontend, backend, xgt, license manager** — `-fips` is appended to the resolved image tag (e.g. `2.6.1` → `2.6.1-fips`).
+- **mongodb** — switches to `docker.io/percona/percona-server-mongodb` (configurable via `fips.mongoImage.repository`/`.tag`).
+
+`fips.enabled` only swaps the images.  Production FIPS deployments will typically also want:
+
+- **MongoDB authentication** — see [With MongoDB Authentication](#with-mongodb-authentication).
+- **MongoDB TLS** — see [MongoDB TLS](#mongodb-tls).  With `fips.enabled`, `--tlsFIPSMode` is added automatically when TLS is on.
+- **Encryption at rest** — see [MongoDB Encryption at Rest](#mongodb-encryption-at-rest).
+
+On OpenShift, the [OpenShift](#openshift) note about Percona's fixed uid 1001 applies — the default `anyuid` SCC binding handles it.
+
+### With xGT License (direct file)
+
+Mount a single license file directly into xGT:
 
 ```bash
 kubectl create secret generic xgt-license --from-file=xgtd.lic=/path/to/xgtd.lic -n <namespace>
@@ -57,11 +98,35 @@ Or pass it inline:
 helm install rocketgraph ./charts/rocketgraph --set-file xgt.license.data=/path/to/xgtd.lic
 ```
 
+### With xGT License Manager
+
+The License Manager is a standalone service that serves license files to xGT over port 6200, supporting multiple licenses and multiple xGT replicas. When enabled, `license.location` in xgtd.conf is set automatically.
+
+Create a secret containing one or more license files (each key becomes a file under `/conf/licenses/`):
+
+```bash
+kubectl create secret generic xgt-licenses \
+  --from-file=server1.lic \
+  --from-file=server2.lic \
+  -n <namespace>
+```
+
+Then enable the license manager:
+
+```yaml
+xgt:
+  licenseManager:
+    enabled: true
+    licenseFiles:
+      existingSecret: xgt-licenses
+```
+
+See [`values-license-manager.yaml`](values-license-manager.yaml) for a complete example you can pass with `-f`.
+
 ### With MongoDB Authentication
 
 ```bash
 kubectl create secret generic mongodb-auth \
-  --from-literal=mongodb-root-username=admin \
   --from-literal=mongodb-root-password=secretpass \
   -n <namespace>
 
@@ -80,6 +145,140 @@ This should fail with an auth error. Then verify credentials work:
 
 ```bash
 kubectl exec -it deployment/<release-name>-mongodb -n <namespace> -- mongosh -u admin -p secretpass --authenticationDatabase admin --eval "db.adminCommand('listDatabases')"
+```
+
+### MongoDB TLS
+
+Encrypts connections between the backend and MongoDB. MongoDB 5.0+ requires a CA cert even without mTLS.
+
+#### 1. Generate a certificate
+
+The certificate must include `localhost` and `127.0.0.1` in the SAN so that the in-pod health check probes can verify it:
+
+```bash
+openssl req -x509 -newkey rsa:2048 -nodes \
+  -keyout mongodb-key.pem -out mongodb-cert.pem -days 365 \
+  -subj "/CN=<release-name>-mongodb" \
+  -addext "subjectAltName=DNS:<release-name>-mongodb,DNS:<release-name>-mongodb.<namespace>.svc.cluster.local,DNS:localhost,IP:127.0.0.1"
+```
+
+```powershell
+# PowerShell (one line)
+openssl req -x509 -newkey rsa:2048 -nodes -keyout mongodb-key.pem -out mongodb-cert.pem -days 365 -subj "/CN=<release-name>-mongodb" -addext "subjectAltName=DNS:<release-name>-mongodb,DNS:<release-name>-mongodb.<namespace>.svc.cluster.local,DNS:localhost,IP:127.0.0.1"
+```
+
+#### 2. Create the secret
+
+mongod requires the cert and key concatenated into a single `server.pem` file:
+
+```bash
+cat mongodb-cert.pem mongodb-key.pem > server.pem
+kubectl create secret generic mongodb-tls --from-file=server.pem=server.pem --from-file=ca.pem=mongodb-cert.pem -n <namespace>
+```
+
+```powershell
+# PowerShell
+Get-Content mongodb-cert.pem, mongodb-key.pem | Set-Content server.pem
+kubectl create secret generic mongodb-tls --from-file=server.pem=server.pem --from-file=ca.pem=mongodb-cert.pem -n <namespace>
+```
+
+#### 3. Enable TLS
+
+```yaml
+mongodb:
+  tls:
+    enabled: true
+    existingSecret: mongodb-tls
+```
+
+The backend mounts `ca.pem` from the secret and uses it to verify the MongoDB server certificate. A CA cert is required — the chart will fail at install time if `tls.enabled` is true without either `existingSecret` or `caCert` set.
+
+The default `mode: requireTLS` forces all connections to use TLS. Use `preferTLS` to allow non-TLS clients during migration.
+
+#### FIPS-Mode TLS
+
+When `fips.enabled=true` (see [FIPS Mode](#fips-mode)) and TLS is on, mongod is started with `--tlsFIPSMode` automatically, enforcing FIPS-only cipher suites during the handshake.  `fips.enabled` also supplies the FIPS-capable Percona image, so no separate flag or image override is needed:
+
+```yaml
+fips:
+  enabled: true
+mongodb:
+  tls:
+    enabled: true
+    existingSecret: mongodb-tls
+```
+
+#### MongoDB mTLS
+
+To require the backend to present a client certificate, add `client.pem` (cert+key concatenated) to the secret and enable mTLS:
+
+```bash
+cat client-cert.pem client-key.pem > client.pem
+
+kubectl create secret generic mongodb-tls \
+  --from-file=server.pem=server.pem \
+  --from-file=ca.pem=ca.pem \
+  --from-file=client.pem=client.pem \
+  -n <namespace>
+```
+
+```yaml
+mongodb:
+  tls:
+    enabled: true
+    existingSecret: mongodb-tls
+    mtls: true
+```
+
+### MongoDB Encryption at Rest
+
+Encrypts data files on disk using mongod's native WiredTiger encryption engine.
+
+> **Requirement:** The standard `docker.io/library/mongo` image does not support encryption at rest. You must switch to **Percona Server for MongoDB** (or MongoDB Enterprise). The chart will fail at install time if `mongodb.encryption.enabled=true` is set without changing the image.
+
+#### 1. Generate an encryption key
+
+The key must be exactly 32 random bytes, base64-encoded:
+
+```powershell
+# PowerShell
+$key = [Convert]::ToBase64String((1..32 | ForEach-Object { [byte](Get-Random -Max 256) }))
+kubectl create secret generic mongodb-encryption --from-literal=encryption.key=$key -n <namespace>
+```
+
+```bash
+# bash
+kubectl create secret generic mongodb-encryption \
+  --from-literal=encryption.key="$(openssl rand -base64 32)" \
+  -n <namespace>
+```
+
+> **Important:** Store this key securely. If it is lost, the data cannot be recovered.
+
+#### 2. Switch to Percona and enable encryption
+
+```yaml
+mongodb:
+  image:
+    repository: docker.io/percona/percona-server-mongodb
+    tag: "latest"
+  encryption:
+    enabled: true
+    existingSecret: mongodb-encryption
+```
+
+#### 3. Wipe the existing data volume
+
+The encrypted storage engine cannot read unencrypted data files. Delete the PVC before deploying so MongoDB initializes a fresh encrypted database:
+
+```bash
+kubectl delete pvc -l app=mongodb -n <namespace>
+```
+
+Then install or upgrade:
+
+```bash
+helm upgrade rocketgraph ./charts/rocketgraph -f values.yaml -n <namespace>
 ```
 
 ### External MongoDB
@@ -490,7 +689,7 @@ the client certificate. `BasicAuth` does not send client certificates.
 | `backend.image.tag`         | Backend image tag  | `Chart.appVersion`                               |
 | `backend.image.pullPolicy`  | Pull policy        | `IfNotPresent`                                   |
 | `mongodb.image.repository`  | MongoDB image      | `docker.io/library/mongo`                        |
-| `mongodb.image.tag`         | MongoDB image tag  | `latest`                                         |
+| `mongodb.image.tag`         | MongoDB image tag  | `8.0.23`                                         |
 | `xgt.image.repository`      | xGT image          | `docker.io/rocketgraph/xgt`                      |
 | `xgt.image.tag`             | xGT image tag      | `Chart.appVersion`                               |
 
@@ -503,15 +702,11 @@ the client certificate. `BasicAuth` does not send client certificates.
 | `mongodb.replicas`  | MongoDB replicas  | `1`     |
 | `xgt.replicas`      | xGT replicas      | `1`     |
 
-> **Note:** Only the frontend is fully stateless and supports multiple replicas without limitation.
-> The backend uses filesystem-based sessions and a per-pod JWT secret key — `sessionAffinity: ClientIP`
-> is used to pin clients to a single pod, but this is best-effort and not guaranteed (e.g. behind a
-> proxy or load balancer all clients may share the same source IP). xGT is an in-memory store with no
-> replication support — multiple xGT replicas are independent instances with separate data.
-> `sessionAffinity: ClientIP` pins clients to the same xGT pod so users do not need to manually
-> specify an instance, though this is subject to the same best-effort caveats as the backend.
-> For more reliable data isolation and load balancing, it is recommended to shard users across
-> multiple independent chart deployments rather than using replicas.
+> **Note:** `backend`, `mongodb`, and `xgt` are locked to `replicas: 1` and enforced by a pre-install
+> validation. The backend does not share session state across instances; MongoDB is deployed as a
+> standalone node with no replica set; xGT has no data replication between instances. The frontend
+> is the only component that can be scaled freely. To handle more load, deploy multiple independent
+> chart releases and route users to a specific release.
 
 ### Services
 
@@ -523,57 +718,88 @@ the client certificate. `BasicAuth` does not send client certificates.
 | `xgt.service.type`           | xGT service type      | `ClusterIP` |
 | `xgt.port`                   | xGT port              | `4367`      |
 
+### Ingress
+
+An Ingress resource is included but disabled by default. Enable it to expose the frontend at a hostname through your cluster's ingress controller:
+
+```yaml
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+  hosts:
+    - host: rocketgraph.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: rocketgraph-tls
+      hosts:
+        - rocketgraph.example.com
+```
+
+The Ingress routes to the frontend service on port 80. The ingress controller terminates TLS before forwarding, so `frontend.tls` is not needed when using Ingress TLS.
+
+| Parameter              | Description                                                | Default         |
+|------------------------|------------------------------------------------------------|-----------------|
+| `ingress.enabled`      | Create an Ingress resource                                 | `false`         |
+| `ingress.className`    | `spec.ingressClassName` (e.g. `nginx`, `alb`)              | `""`            |
+| `ingress.annotations`  | Annotations for the ingress controller                     | `{}`            |
+| `ingress.hosts`        | List of host/path rules                                    | see values.yaml |
+| `ingress.tls`          | TLS configuration (secretName + hosts)                     | `[]`            |
+
 ### TLS Parameters
 
-| Parameter                     | Description                                                                          | Default |
-|-------------------------------|--------------------------------------------------------------------------------------|---------|
-| `frontend.tls.existingSecret` | Secret with keys: `public.pem`, `private.pem`, optionally `chain.pem` for mTLS       | `""`    |
-| `frontend.tls.publicCert`     | Inline public cert PEM                                                               | `""`    |
-| `frontend.tls.privateKey`     | Inline private key PEM                                                               | `""`    |
-| `frontend.tls.certChain`      | Inline cert chain PEM (enables mTLS)                                                 | `""`    |
+| Parameter                     | Description                                                                                   | Default |
+|-------------------------------|-----------------------------------------------------------------------------------------------|---------|
+| `frontend.tls.existingSecret` | Secret with keys: `public.pem`, `private.pem`, optionally `chain.pem` for mTLS                | `""`    |
+| `frontend.tls.publicCert`     | Inline public cert PEM                                                                        | `""`    |
+| `frontend.tls.privateKey`     | Inline private key PEM                                                                        | `""`    |
+| `frontend.tls.certChain`      | Inline cert chain PEM (enables mTLS)                                                          | `""`    |
 | `backend.tls.existingSecret`  | Secret with keys: `xgt-server.pem`, optionally `proxy-client-cert.pem`/`proxy-client-key.pem` | `""`    |
-| `backend.tls.xgtServerCert`   | Inline xGT server CA cert PEM                                                                  | `""`    |
-| `backend.tls.proxyClientCert` | Inline proxy client cert PEM                                                                   | `""`    |
-| `backend.tls.proxyClientKey`  | Inline proxy client key PEM                                                                    | `""`    |
+| `backend.tls.xgtServerCert`   | Inline xGT server CA cert PEM                                                                 | `""`    |
+| `backend.tls.proxyClientCert` | Inline proxy client cert PEM                                                                  | `""`    |
+| `backend.tls.proxyClientKey`  | Inline proxy client key PEM                                                                   | `""`    |
 | `backend.tls.mtls`            | Enable mTLS for backend connections to xGT (requires `existingSecret` or inline cert+key)     | `false` |
-| `xgt.ssl.enabled`             | Enable SSL on xGT server                                                                       | `false` |
+| `xgt.ssl.enabled`             | Enable SSL on xGT server                                                                      | `false` |
 | `xgt.ssl.existingSecret`      | Secret with keys: `server.cert.pem`, `server.key.pem`, optionally `ca-chain.cert.pem`         | `""`    |
-| `xgt.ssl.cert`                | Inline xGT server cert PEM                                                                     | `""`    |
-| `xgt.ssl.key`                 | Inline xGT server key PEM                                                                      | `""`    |
+| `xgt.ssl.cert`                | Inline xGT server cert PEM                                                                    | `""`    |
+| `xgt.ssl.key`                 | Inline xGT server key PEM                                                                     | `""`    |
 | `xgt.ssl.mtls`                | Require client certificates on xGT server (needs `ca-chain.cert.pem` in secret or `caCert`)   | `false` |
 | `xgt.ssl.caCert`              | Inline CA cert PEM for validating client certs (`ca-chain.cert.pem`)                          | `""`    |
 
 ### Backend Environment
 
-| Parameter                           | Description                                        | Default                                      |
-|-------------------------------------|----------------------------------------------------|----------------------------------------------|
-| `backend.env.MC_DEFAULT_XGT_HOST`  | xGT hostname                                        | Auto-detected from release name              |
-| `backend.env.MC_DEFAULT_XGT_PORT`  | xGT port                                            | `""`                                         |
-| `backend.env.MC_SESSION_TTL`       | Session TTL                                         | `""`                                         |
-| `backend.env.XGT_SERVER_CN`        | xGT server CN (required when SSL enabled)           | `""`                                         |
-| `backend.env.XGT_AUTH_TYPES`       | Login methods (`[]` for single-user mode)           | `"['BasicAuth','FilePKIAuth','PKIAuth']"`    |
-| `backend.env.MC_ODBC_LIBRARY_PATH` | ODBC library path                                   | `""`                                         |
-| `backend.env.MC_PORT`              | Frontend HTTP port (used to derive OIDC redirect URI) | `frontend.service.httpPort`                |
-| `backend.env.MC_SSL_PORT`          | Frontend HTTPS port (used to derive OIDC redirect URI) | `frontend.service.httpsPort`              |
-| `backend.siteConfig.yml`           | LLM config overrides (merged with base config)      | `""`                                         |
-| `backend.siteConfig.py`            | Custom Python LLM config module                     | `""`                                         |
+| Parameter                           | Description                                           | Default                                      |
+|-------------------------------------|-------------------------------------------------------|----------------------------------------------|
+| `backend.env.MC_DEFAULT_XGT_HOST`  | xGT hostname                                           | Auto-detected from release name              |
+| `backend.env.MC_DEFAULT_XGT_PORT`  | xGT port                                               | `""`                                         |
+| `backend.env.MC_SESSION_TTL`       | Session TTL                                            | `""`                                         |
+| `backend.env.XGT_SERVER_CN`        | xGT server CN (required when SSL enabled)              | `""`                                         |
+| `backend.env.XGT_AUTH_TYPES`       | Login methods (`[]` for single-user mode)              | `"['BasicAuth','FilePKIAuth','PKIAuth']"`    |
+| `backend.env.MC_ODBC_LIBRARY_PATH` | ODBC library path                                      | `""`                                         |
+| `backend.env.MC_PORT`              | Frontend HTTP port (used to derive OIDC redirect URI)  | `frontend.service.httpPort`                  |
+| `backend.env.MC_SSL_PORT`          | Frontend HTTPS port (used to derive OIDC redirect URI) | `frontend.service.httpsPort`                 |
+| `backend.siteConfig.yml`           | LLM config overrides (merged with base config)         | `""`                                         |
+| `backend.siteConfig.py`            | Custom Python LLM config module                        | `""`                                         |
 
 ### OIDC Parameters
 
-| Parameter                          | Description                                                                                 | Default |
-|------------------------------------|---------------------------------------------------------------------------------------------|---------|
-| `backend.oidc.issuer`              | Override OIDC issuer URL (auto-discovered from xGT if empty)                               | `""`    |
-| `backend.oidc.clientId`            | Override OAuth2 client ID (auto-discovered from xGT if empty)                              | `""`    |
-| `backend.oidc.clientSecret`        | Client secret — inline value creates a Secret                                               | `""`    |
-| `backend.oidc.existingSecret`      | Existing Secret with key `MC_OIDC_CLIENT_SECRET`                                            | `""`    |
-| `backend.oidc.scopes`              | Space-separated OAuth2 scopes                                                               | `""`    |
-| `backend.oidc.frontendUrl`         | Override frontend base URL for post-login redirects                                         | `""`    |
-| `backend.oidc.redirectUri`         | Override redirect URI sent to the IdP                                                       | `""`    |
-| `backend.oidc.allowedOrigins`      | Comma-separated allowed origins (defense-in-depth, optional)                               | `""`    |
-| `backend.oidc.tlsVerify`           | `true`, `false`, or path to CA bundle for OIDC HTTP calls                                  | `""`    |
+| Parameter                          | Description                                                                                    | Default |
+|------------------------------------|------------------------------------------------------------------------------------------------|---------|
+| `backend.oidc.issuer`              | Override OIDC issuer URL (auto-discovered from xGT if empty)                                   | `""`    |
+| `backend.oidc.clientId`            | Override OAuth2 client ID (auto-discovered from xGT if empty)                                  | `""`    |
+| `backend.oidc.clientSecret`        | Client secret — inline value creates a Secret                                                  | `""`    |
+| `backend.oidc.existingSecret`      | Existing Secret with key `MC_OIDC_CLIENT_SECRET`                                               | `""`    |
+| `backend.oidc.scopes`              | Space-separated OAuth2 scopes                                                                  | `""`    |
+| `backend.oidc.frontendUrl`         | Override frontend base URL for post-login redirects                                            | `""`    |
+| `backend.oidc.redirectUri`         | Override redirect URI sent to the IdP                                                          | `""`    |
+| `backend.oidc.allowedOrigins`      | Comma-separated allowed origins (defense-in-depth, optional)                                   | `""`    |
+| `backend.oidc.tlsVerify`           | `true`, `false`, or path to CA bundle for OIDC HTTP calls                                      | `""`    |
 | `backend.oidc.caCert`              | Inline CA PEM — creates a Secret, mounted into backend and xGT at `/etc/ssl/certs/oidc-ca.pem` | `""`    |
-| `backend.oidc.caCertExistingSecret`| Existing Secret with key `oidc-ca.pem`                                                     | `""`    |
-| `backend.oidc.xgtAllowedHosts`     | xGT host:port allowlist (SSRF prevention). Defaults to internal xGT service.               | `""`    |
+| `backend.oidc.caCertExistingSecret`| Existing Secret with key `oidc-ca.pem`                                                         | `""`    |
+| `backend.oidc.xgtAllowedHosts`     | xGT host:port allowlist (SSRF prevention). Defaults to internal xGT service.                   | `""`    |
 
 ### Persistence
 
@@ -592,15 +818,24 @@ the client certificate. `BasicAuth` does not send client certificates.
 
 ### MongoDB
 
-| Parameter                      | Description                                                        | Default |
-|--------------------------------|--------------------------------------------------------------------|---------|
-| `mongodb.enabled`              | Deploy MongoDB as part of the release                              | `true`  |
-| `mongodb.externalUri`          | MongoDB connection URI when `mongodb.enabled=false`                | `""`    |
-| `mongodb.externalUriSecret`    | Secret with key `mongodb-uri` (preferred over `externalUri`)       | `""`    |
-| `mongodb.auth.enabled`         | Enable MongoDB authentication                                      | `false` |
-| `mongodb.auth.existingSecret`  | Secret with keys: `mongodb-root-username`, `mongodb-root-password` | `""`    |
-| `mongodb.auth.rootUsername`    | Root username (ignored if existingSecret is set)                   | `""`    |
-| `mongodb.auth.rootPassword`    | Root password (ignored if existingSecret is set)                   | `""`    |
+| Parameter                           | Description                                                                                                              | Default       |
+|-------------------------------------|--------------------------------------------------------------------------------------------------------------------------|---------------|
+| `mongodb.enabled`                   | Deploy MongoDB as part of the release                                                                                    | `true`        |
+| `mongodb.externalUri`               | MongoDB connection URI when `mongodb.enabled=false`                                                                      | `""`          |
+| `mongodb.externalUriSecret`         | Secret with key `mongodb-uri` (preferred over `externalUri`)                                                             | `""`          |
+| `mongodb.auth.enabled`              | Enable MongoDB authentication                                                                                            | `false`       |
+| `mongodb.auth.existingSecret`       | Secret with key: `mongodb-root-password` (the root user is always `rocketgraph`)                                         | `""`          |
+| `mongodb.auth.rootPassword`         | Root password (ignored if existingSecret is set). The root user is always `rocketgraph`                                  | `""`          |
+| `mongodb.tls.enabled`               | Enable TLS for MongoDB connections                                                                                       | `false`       |
+| `mongodb.tls.existingSecret`        | Secret with keys: `server.pem` (cert+key); optional: `ca.pem`, `client.pem`                                              | `""`          |
+| `mongodb.tls.cert`                  | Inline server cert PEM                                                                                                   | `""`          |
+| `mongodb.tls.key`                   | Inline server key PEM                                                                                                    | `""`          |
+| `mongodb.tls.caCert`                | Inline CA cert PEM — used by backend to verify server; required for mTLS                                                 | `""`          |
+| `mongodb.tls.mode`                  | mongod TLS mode: `requireTLS`, `preferTLS`, `allowTLS`                                                                   | `requireTLS`  |
+| `mongodb.tls.mtls`                  | Require backend to present a client cert (`client.pem` in secret)                                                        | `false`       |
+| `mongodb.encryption.enabled`        | Enable encryption at rest — requires Percona or MongoDB Enterprise image (chart will fail if set with the default image) | `false`       |
+| `mongodb.encryption.existingSecret` | Secret with key: `encryption.key`                                                                                        | `""`          |
+| `mongodb.encryption.key`            | Inline encryption key                                                                                                    | `""`          |
 
 ### xGT Configuration
 
@@ -622,11 +857,31 @@ the client certificate. `BasicAuth` does not send client certificates.
 
 ### Other
 
-| Parameter                    | Description                                                      | Default |
-|------------------------------|------------------------------------------------------------------|---------|
-| `openshift.enabled`          | Create ServiceAccount with anyuid SCC                            | `false` |
-| `networkPolicy.enabled`      | Restrict MongoDB access to backend only                          | `true`  |
-| `compat.serviceNames`        | Simple service names for old frontend images                     | `false` |
-| `compat.installSssd`         | Install SSSD at startup for old xGT images                       | `false` |
-| `xgt.license.existingSecret` | Secret with key `xgtd.lic`                                       | `""`    |
-| `xgt.license.data`           | Inline license content (use `--set-file`)                        | `""`    |
+| Parameter                    | Description                                                      | Default   |
+|------------------------------|------------------------------------------------------------------|-----------|
+| `fips.enabled`               | Use FIPS images (`-fips` tags + Percona MongoDB); see FIPS Mode  | `false`   |
+| `fips.mongoImage.repository` | FIPS MongoDB image repository                                    | `docker.io/percona/percona-server-mongodb` |
+| `fips.mongoImage.tag`        | FIPS MongoDB image tag                                           | `8.0.23`  |
+| `openshift.enabled`          | Create ServiceAccount bound to the SCC set by `openshift.scc`    | `false`   |
+| `openshift.scc`              | SCC to grant: `anyuid` (fixed-UID images) or `nonroot`           | `anyuid`  |
+| `networkPolicy.enabled`      | Restrict inter-component traffic with per-component policies     | `true`    |
+| `compat.serviceNames`        | Simple service names for old frontend images                     | `false`   |
+| `compat.installSssd`         | Install SSSD at startup for old xGT images                       | `false`   |
+| `xgt.license.existingSecret` | Secret with key `xgtd.lic` (direct file mount)                   | `""`      |
+| `xgt.license.data`           | Inline license content (use `--set-file`)                        | `""`      |
+
+### License Manager Parameters
+
+| Parameter                                          | Description                                                                 | Default                                     |
+|----------------------------------------------------|-----------------------------------------------------------------------------|---------------------------------------------|
+| `xgt.licenseManager.enabled`                       | Enable the License Manager deployment                                       | `false`                                     |
+| `xgt.licenseManager.image.repository`              | License Manager image                                                       | `docker.io/rocketgraph/xgt-license-manager` |
+| `xgt.licenseManager.image.pullPolicy`              | Image pull policy                                                           | `IfNotPresent`                              |
+| `xgt.licenseManager.image.tag`                     | License Manager image tag                                                   | `1.5.1`                                     |
+| `xgt.licenseManager.licenseFiles.existingSecret`   | Secret whose keys are mounted as license files under `/conf/licenses/`      | `""`                                        |
+| `xgt.licenseManager.licenseFiles.data`             | Map of filename to license content (creates a Secret)                       | `{}`                                        |
+| `xgt.licenseManager.persistence.conf.size`         | PVC size for `/conf`                                                        | `1Gi`                                       |
+| `xgt.licenseManager.persistence.conf.existingClaim`| Existing PVC for `/conf`                                                    | `""`                                        |
+| `xgt.licenseManager.persistence.log.size`          | PVC size for `/log`                                                         | `1Gi`                                       |
+| `xgt.licenseManager.persistence.log.existingClaim` | Existing PVC for `/log`                                                     | `""`                                        |
+| `xgt.licenseManager.resources`                     | Resource requests/limits                                                    | `{}`                                        |

@@ -1,0 +1,55 @@
+# docker-compose.license-manager.yml — opt-in xGT license-manager service
+#
+# Layer on top of docker-compose.yml when xgt should fetch its license
+# from a dedicated license-manager service rather than via the single
+# bundled .lic file (XGT_LICENSE_FILE).  Supports multiple licenses
+# (drop them all into the licenses directory) and survives xgt restarts
+# because the license manager runs as a separate, persistent service.
+#
+# Config and logs live on the host (like the xgt service).  Put license
+# files in <conf>/licenses/.
+#
+# Setup:
+#   mkdir -p ~/.rocketgraph/license-manager/conf/licenses
+#   cp /path/to/*.lic ~/.rocketgraph/license-manager/conf/licenses/
+#
+# In your xgtd.conf (under XGT_CONF_PATH), add:
+#   license.location: 6200@license-manager
+#
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.license-manager.yml up -d
+#
+# FIPS deployments should also set MC_LICENSE_MANAGER_IMAGE in .env to
+# the -fips variant of the license-manager tag.
+
+name: ${COMPOSE_PROJECT_NAME:-rocketgraph}
+
+services:
+  license-manager:
+    image: ${MC_LICENSE_MANAGER_IMAGE:-docker.io/rocketgraph/xgt-license-manager:1.5.1}
+    restart: on-failure
+    volumes:
+      - ${MC_LICENSE_MANAGER_CONF_PATH:-~/.rocketgraph/license-manager/conf}:/conf:Z
+      - ${MC_LICENSE_MANAGER_LOG_PATH:-~/.rocketgraph/license-manager/log}:/log:Z
+    networks:
+      - external-network
+    # TCP check on the license port.
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/localhost/6200'"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  xgt:
+    extends:
+      file: docker-compose.yml
+      service: xgt
+    depends_on:
+      license-manager:
+        condition: service_healthy
+
+networks:
+  database-network:
+    internal: true
+  external-network:

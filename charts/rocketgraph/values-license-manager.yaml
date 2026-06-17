@@ -1,0 +1,37 @@
+# Example values for deploying Rocketgraph with the xGT License Manager.
+#
+# The License Manager serves license files to xGT over port 6200.
+# All xGT replicas connect to it automatically when enabled.
+#
+# Before installing, create a secret containing your license file(s):
+#
+#   kubectl create secret generic xgt-licenses \
+#     --from-file=server.lic=/path/to/server.lic \
+#     -n <namespace>
+#
+# Then install:
+#
+#   helm install rocketgraph ./charts/rocketgraph \
+#     -f values-license-manager.yaml \
+#     -n <namespace>
+
+xgt:
+  licenseManager:
+    enabled: true
+
+    # Image version — update to match your release
+    # image:
+    #   tag: "latest"
+
+    licenseFiles:
+      # Name of the secret containing your license file(s).
+      # Each key in the secret becomes a file under /conf/licenses/.
+      existingSecret: xgt-licenses
+
+    # Storage for license manager config and logs.
+    # Adjust sizes or provide existingClaim to use a pre-existing PVC.
+    persistence:
+      conf:
+        size: 1Gi
+      log:
+        size: 1Gi

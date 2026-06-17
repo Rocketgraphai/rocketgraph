@@ -4,7 +4,9 @@ name: ${COMPOSE_PROJECT_NAME:-rocketgraph}
 
 services:
   frontend:
-    image: ${MC_FRONTEND_IMAGE:-docker.io/rocketgraph/mission-control-frontend:latest}
+    image: ${MC_FRONTEND_IMAGE:-docker.io/rocketgraph/mission-control-frontend:2.6.1}
+    environment:
+      MC_SSL_PORT: ${MC_SSL_PORT:-443}
     ports:
       - "${MC_PORT:-80}:80"
       - "${MC_SSL_PORT:-443}:443"
@@ -18,7 +20,7 @@ services:
       backend:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost/health"]
+      test: ["CMD", "curl", "-fsS", "-o", "/dev/null", "http://localhost/health"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -26,9 +28,17 @@ services:
     restart: on-failure
 
   backend:
-    image: ${MC_BACKEND_IMAGE:-docker.io/rocketgraph/mission-control-backend:latest}
+    image: ${MC_BACKEND_IMAGE:-docker.io/rocketgraph/mission-control-backend:2.6.1}
     environment:
-      MC_MONGO_URI: mongodb://mongodb:27017
+      # The backend builds the bundled MongoDB URI from these vars (auth,
+      # TLS, mTLS) in build_mongo_uri() — not via compose ${...:+...}, which
+      # podman-compose 1.5.0 can't interpolate.  The TLS server cert needs a
+      # subjectAltName for "mongodb" (scripts/generate_mongo_certs.sh).  Set
+      # MC_MONGO_URI to override entirely (e.g. an external MongoDB).
+      MC_MONGO_URI: ${MC_MONGO_URI:-}
+      MC_MONGO_PASSWORD: ${MC_MONGO_PASSWORD:-}
+      MC_MONGO_TLS_ENABLED: ${MC_MONGO_TLS_ENABLED:-}
+      MC_MONGO_TLS_CLIENT_PEM: ${MC_MONGO_TLS_CLIENT_PEM:-}
       MC_PORT: ${MC_PORT:-80}
       MC_SSL_PORT: ${MC_SSL_PORT:-443}
       MC_DEFAULT_XGT_HOST: ${MC_DEFAULT_XGT_HOST:-}
@@ -62,6 +72,10 @@ services:
       - ${MC_SITE_CONFIG_YML:-~/.rocketgraph/.fallback_mount/site_config.yml}:/app/site_config/site_config.yml:ro,Z
       - ${MC_SITE_CONFIG_PY:-~/.rocketgraph/.fallback_mount/site_config.py}:/app/site_config/site_config.py:ro,Z
       - ${MC_OIDC_CA_CERT:-~/.rocketgraph/.fallback_mount/oidc-ca.pem}:/etc/ssl/certs/oidc-ca.pem:ro,z
+      # CA cert (MC_MONGO_TLS_CA_PEM) and, for mTLS, the client cert
+      # (MC_MONGO_TLS_CLIENT_PEM).  Unused when TLS is off.
+      - ${MC_MONGO_TLS_CA_PEM:-~/.rocketgraph/.fallback_mount/mongo-tls/ca.pem}:/etc/ssl/certs/mongodb-ca.pem:ro,z
+      - ${MC_MONGO_TLS_CLIENT_PEM:-~/.rocketgraph/.fallback_mount/mongo-tls/client.pem}:/etc/ssl/certs/mongodb-client.pem:ro,z
     depends_on:
       mongodb:
         condition: service_healthy
@@ -73,7 +87,7 @@ services:
       start_period: 15s
 
   xgt:
-    image: ${XGT_IMAGE:-docker.io/rocketgraph/xgt:latest}
+    image: ${XGT_IMAGE:-docker.io/rocketgraph/xgt:2.6.1}
     ports:
       - "${XGT_PORT:-4367}:4367"
     volumes:
@@ -92,14 +106,78 @@ services:
       - external-network
 
   mongodb:
-    image: ${MC_MONGODB_IMAGE:-docker.io/library/mongo:latest}
+    image: ${MC_MONGODB_IMAGE:-docker.io/library/mongo:8.0.23}
     restart: always
+    # MongoDB security is opt-in (all via .env):
+    #   * Auth — set MC_MONGO_PASSWORD (root user is always "rocketgraph").
+    #   * TLS  — set MC_MONGO_TLS_ENABLED=true with MC_MONGO_TLS_SERVER_PEM
+    #            and MC_MONGO_TLS_CA_PEM.
+    #   * mTLS — set MC_MONGO_MTLS_ENABLED=true and MC_MONGO_TLS_CLIENT_PEM
+    #            to require client certs.
+    # See README.md and doc/mongodb_security.md for details.
+    environment:
+      # The root user is always "rocketgraph"; auth is enabled iff a password
+      # is set.  MONGO_INITDB_ROOT_USERNAME is derived from the password in the
+      # command/healthcheck shells (not set here) because mongod's entrypoint
+      # errors out if the username is set without a password.
+      MONGO_INITDB_ROOT_PASSWORD: ${MC_MONGO_PASSWORD:-}
+      # TLS flags are assembled by the container shell, not compose ${...}
+      # interpolation: nested expansion isn't portable to podman-compose.
+      MC_MONGO_TLS_ENABLED: ${MC_MONGO_TLS_ENABLED:-}
+      MC_MONGO_TLS_MODE: ${MC_MONGO_TLS_MODE:-requireTLS}
+      MC_MONGO_MTLS_ENABLED: ${MC_MONGO_MTLS_ENABLED:-}
+      MC_MONGO_TLS_CLIENT_PEM: ${MC_MONGO_TLS_CLIENT_PEM:-}
+    entrypoint: ["/bin/sh", "-c"]
+    # Treat only MC_MONGO_TLS_ENABLED=true / MC_MONGO_MTLS_ENABLED=true as on
+    # (not any non-empty value), so they agree with the Helm chart and the
+    # backend's build_mongo_uri(). mTLS is off by default: when it's not on we
+    # add --tlsAllowConnectionsWithoutCertificates. mongod has no positive
+    # "require certs" flag, so we derive mtls_relax (the inverse) to keep the
+    # ${VAR:+flag} idiom — POSIX ${VAR:-flag} would leak the value when set.
+    command:
+      - >-
+        [ "$$MC_MONGO_TLS_ENABLED" = true ] || MC_MONGO_TLS_ENABLED=;
+        [ "$$MC_MONGO_MTLS_ENABLED" = true ] && mtls_relax= || mtls_relax=1;
+        if [ -n "$$MONGO_INITDB_ROOT_PASSWORD" ]; then
+        export MONGO_INITDB_ROOT_USERNAME=rocketgraph;
+        echo "MongoDB auth: ENABLED (user rocketgraph)" >&2;
+        else echo "MongoDB auth: DISABLED (set MC_MONGO_PASSWORD to enable)" >&2;
+        fi;
+        exec docker-entrypoint.sh mongod
+        $${MC_MONGO_TLS_ENABLED:+--tlsMode "$$MC_MONGO_TLS_MODE"
+        --tlsCertificateKeyFile /etc/ssl/mongodb/server.pem
+        --tlsCAFile /etc/ssl/mongodb/ca.pem
+        $${mtls_relax:+--tlsAllowConnectionsWithoutCertificates}}
     networks:
       - database-network
     volumes:
       - mongodb-data:/data/db
+      - ${MC_MONGO_TLS_SERVER_PEM:-~/.rocketgraph/.fallback_mount/mongo-tls/server.pem}:/etc/ssl/mongodb/server.pem:ro,Z
+      - ${MC_MONGO_TLS_CA_PEM:-~/.rocketgraph/.fallback_mount/mongo-tls/ca.pem}:/etc/ssl/mongodb/ca.pem:ro,z
+      # Client cert so the healthcheck can connect under mTLS.
+      - ${MC_MONGO_TLS_CLIENT_PEM:-~/.rocketgraph/.fallback_mount/mongo-tls/client.pem}:/etc/ssl/mongodb/client.pem:ro,z
+    # mongo declares /data/configdb as a VOLUME but a standalone mongod never
+    # uses it; tmpfs avoids leaving an orphaned anonymous volume each run.
+    tmpfs:
+      - /data/configdb
     healthcheck:
-      test: "mongosh --eval \"db.adminCommand('ping')\" || mongo --eval \"db.adminCommand('ping')\""
+      # Shell-assembled like the command above; auth reuses MONGO_INITDB_ROOT_*.
+      test:
+        - CMD-SHELL
+        - >-
+          [ "$$MC_MONGO_TLS_ENABLED" = true ] || MC_MONGO_TLS_ENABLED=;
+          if [ -n "$$MONGO_INITDB_ROOT_PASSWORD" ]; then
+          MONGO_INITDB_ROOT_USERNAME=rocketgraph; fi;
+          mongosh
+          $${MC_MONGO_TLS_ENABLED:+--tls --tlsCAFile /etc/ssl/mongodb/ca.pem
+          $${MC_MONGO_TLS_CLIENT_PEM:+--tlsCertificateKeyFile /etc/ssl/mongodb/client.pem}}
+          $${MONGO_INITDB_ROOT_USERNAME:+-u "$$MONGO_INITDB_ROOT_USERNAME" -p "$$MONGO_INITDB_ROOT_PASSWORD" --authenticationDatabase admin}
+          --eval "db.adminCommand('ping')"
+          || mongo
+          $${MC_MONGO_TLS_ENABLED:+--tls --tlsCAFile /etc/ssl/mongodb/ca.pem
+          $${MC_MONGO_TLS_CLIENT_PEM:+--tlsCertificateKeyFile /etc/ssl/mongodb/client.pem}}
+          $${MONGO_INITDB_ROOT_USERNAME:+-u "$$MONGO_INITDB_ROOT_USERNAME" -p "$$MONGO_INITDB_ROOT_PASSWORD" --authenticationDatabase admin}
+          --eval "db.adminCommand('ping')"
       interval: 30s
       timeout: 5s
       retries: 3

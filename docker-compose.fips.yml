@@ -1,0 +1,72 @@
+# docker-compose.fips.yml — FIPS deployment overlay
+#
+# Swaps the four bundled images to their FIPS variants (Percona for
+# mongodb, :fips versions for frontend/backend/xgt), adds --tlsFIPSMode
+# when TLS is on, and enables Percona encryption at rest via
+# MC_MONGO_ENCRYPTION_ENABLED + MC_MONGO_ENCRYPTION_KEY_FILE.
+#
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.fips.yml up -d
+#
+# With the license-manager overlay, set the FIPS image in .env too —
+# the -fips variant of the license-manager tag (see env.template).
+
+name: ${COMPOSE_PROJECT_NAME:-rocketgraph}
+
+services:
+  frontend:
+    extends:
+      file: docker-compose.yml
+      service: frontend
+    image: ${MC_FRONTEND_IMAGE:-docker.io/rocketgraph/mission-control-frontend:2.6.1-fips}
+
+  backend:
+    extends:
+      file: docker-compose.yml
+      service: backend
+    image: ${MC_BACKEND_IMAGE:-docker.io/rocketgraph/mission-control-backend:2.6.1-fips}
+
+  xgt:
+    extends:
+      file: docker-compose.yml
+      service: xgt
+    image: ${XGT_IMAGE:-docker.io/rocketgraph/xgt:2.6.1-fips}
+
+  mongodb:
+    extends:
+      file: docker-compose.yml
+      service: mongodb
+    image: ${MC_MONGODB_IMAGE:-docker.io/percona/percona-server-mongodb:8.0.23}
+    # Adds --tlsFIPSMode and --enableEncryption (encryption at rest).
+    # Shell-assembled like the base; Percona's entrypoint is /entrypoint.sh.
+    command:
+      - >-
+        [ "$$MC_MONGO_TLS_ENABLED" = true ] || MC_MONGO_TLS_ENABLED=;
+        [ "$$MC_MONGO_MTLS_ENABLED" = true ] && mtls_relax= || mtls_relax=1;
+        [ "$$MC_MONGO_ENCRYPTION_ENABLED" = true ] || MC_MONGO_ENCRYPTION_ENABLED=;
+        if [ -n "$$MONGO_INITDB_ROOT_PASSWORD" ]; then
+        export MONGO_INITDB_ROOT_USERNAME=rocketgraph;
+        echo "MongoDB auth: ENABLED (user rocketgraph)" >&2;
+        else echo "MongoDB auth: DISABLED (set MC_MONGO_PASSWORD to enable)" >&2;
+        fi;
+        exec /entrypoint.sh mongod
+        $${MC_MONGO_TLS_ENABLED:+--tlsMode "$$MC_MONGO_TLS_MODE"
+        --tlsCertificateKeyFile /etc/ssl/mongodb/server.pem
+        --tlsCAFile /etc/ssl/mongodb/ca.pem
+        $${mtls_relax:+--tlsAllowConnectionsWithoutCertificates}
+        --tlsFIPSMode}
+        $${MC_MONGO_ENCRYPTION_ENABLED:+--enableEncryption --encryptionKeyFile /etc/mongodb-encryption/key}
+    environment:
+      MC_MONGO_ENCRYPTION_ENABLED: ${MC_MONGO_ENCRYPTION_ENABLED:-}
+    volumes:
+      # Encryption-at-rest key (MC_MONGO_ENCRYPTION_ENABLED=true).  The
+      # host file must be mode 0600 and owned by uid 1001 (mongod's user).
+      - ${MC_MONGO_ENCRYPTION_KEY_FILE:-~/.rocketgraph/.fallback_mount/mongo-encryption/key}:/etc/mongodb-encryption/key:ro,Z
+
+volumes:
+  mongodb-data:
+
+networks:
+  database-network:
+    internal: true
+  external-network:

@@ -1,0 +1,121 @@
+{{- if .Values.xgt.licenseManager.enabled }}
+{{- $image := printf "%s:%s%s" .Values.xgt.licenseManager.image.repository (coalesce .Values.xgt.licenseManager.image.tag "latest") (include "rocketgraph.fipsSuffix" .) }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "rocketgraph.fullname.licenseManager" . }}
+  labels:
+    app: xgt-license-manager
+    {{- include "rocketgraph.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: xgt-license-manager
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: xgt-license-manager
+        app.kubernetes.io/instance: {{ .Release.Name }}
+      {{- with .Values.xgt.licenseManager.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if .Values.openshift.enabled }}
+      serviceAccountName: {{ include "rocketgraph.fullname.serviceaccount" . }}
+      {{- end }}
+      {{- with .Values.xgt.licenseManager.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if or .Values.xgt.licenseManager.licenseFiles.existingSecret .Values.xgt.licenseManager.licenseFiles.data }}
+      initContainers:
+        - name: copy-licenses
+          image: {{ $image | quote }}
+          securityContext:
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+          command: ["sh", "-c", "set -e && rm -rf /conf/licenses && mkdir -p /conf/licenses && for f in /tmp/licenses/*; do [ -e \"$f\" ] && cp -L \"$f\" /conf/licenses/; done"]
+          volumeMounts:
+            - name: conf
+              mountPath: /conf
+            - name: license-files
+              mountPath: /tmp/licenses
+              readOnly: true
+      {{- end }}
+      containers:
+        - name: xgt-license-manager
+          image: {{ $image | quote }}
+          imagePullPolicy: {{ .Values.xgt.licenseManager.image.pullPolicy }}
+          {{- with .Values.xgt.licenseManager.containerSecurityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          ports:
+            - name: license
+              containerPort: 6200
+              protocol: TCP
+            - name: license-mgmt
+              containerPort: 6199
+              protocol: TCP
+          {{- with .Values.xgt.licenseManager.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          startupProbe:
+            tcpSocket:
+              port: license
+            periodSeconds: {{ .Values.xgt.licenseManager.startupProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.xgt.licenseManager.startupProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.xgt.licenseManager.startupProbe.failureThreshold }}
+          readinessProbe:
+            tcpSocket:
+              port: license
+            periodSeconds: {{ .Values.xgt.licenseManager.readinessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.xgt.licenseManager.readinessProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.xgt.licenseManager.readinessProbe.failureThreshold }}
+          livenessProbe:
+            tcpSocket:
+              port: license
+            periodSeconds: {{ .Values.xgt.licenseManager.livenessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.xgt.licenseManager.livenessProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.xgt.licenseManager.livenessProbe.failureThreshold }}
+          volumeMounts:
+            - name: conf
+              mountPath: /conf
+            - name: log
+              mountPath: /log
+      {{- with .Values.xgt.licenseManager.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.xgt.licenseManager.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.xgt.licenseManager.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      restartPolicy: Always
+      volumes:
+        - name: conf
+          persistentVolumeClaim:
+            claimName: {{ .Values.xgt.licenseManager.persistence.conf.existingClaim | default (printf "%s-license-manager-conf" .Release.Name) }}
+        {{- if or .Values.xgt.licenseManager.licenseFiles.existingSecret .Values.xgt.licenseManager.licenseFiles.data }}
+        - name: license-files
+          secret:
+            secretName: {{ include "rocketgraph.licenseManagerLicenseSecret" . }}
+        {{- end }}
+        - name: log
+          persistentVolumeClaim:
+            claimName: {{ .Values.xgt.licenseManager.persistence.log.existingClaim | default (printf "%s-license-manager-log" .Release.Name) }}
+{{- end }}

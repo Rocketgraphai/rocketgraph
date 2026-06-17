@@ -39,9 +39,23 @@ spec:
       securityContext:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      {{- if .Values.xgt.licenseManager.enabled }}
+      initContainers:
+        - name: wait-for-license-manager
+          image: "{{ .Values.xgt.image.repository }}:{{ coalesce .Values.xgt.image.tag .Chart.AppVersion }}{{ include "rocketgraph.fipsSuffix" . }}"
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+          command:
+            - bash
+            - -c
+            - |
+              until echo > /dev/tcp/{{ include "rocketgraph.fullname.licenseManager" . }}/6200 2>/dev/null; do echo waiting for license manager; sleep 2; done
+      {{- end }}
       containers:
         - name: xgt
-          image: "{{ .Values.xgt.image.repository }}:{{ coalesce .Values.imageVersions.xgt .Values.xgt.image.tag .Chart.AppVersion }}"
+          image: "{{ .Values.xgt.image.repository }}:{{ coalesce .Values.xgt.image.tag .Chart.AppVersion }}{{ include "rocketgraph.fipsSuffix" . }}"
           imagePullPolicy: {{ .Values.xgt.image.pullPolicy }}
           {{- with .Values.xgt.containerSecurityContext }}
           securityContext:

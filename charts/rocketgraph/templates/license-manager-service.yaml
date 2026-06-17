@@ -1,0 +1,27 @@
+{{- if .Values.xgt.licenseManager.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "rocketgraph.fullname.licenseManager" . }}
+  labels:
+    app: xgt-license-manager
+    {{- include "rocketgraph.labels" . | nindent 4 }}
+  {{- with .Values.xgt.licenseManager.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.xgt.licenseManager.service.type }}
+  selector:
+    app: xgt-license-manager
+    app.kubernetes.io/instance: {{ .Release.Name }}
+  ports:
+    - name: license
+      port: 6200
+      targetPort: license
+      protocol: TCP
+    - name: license-mgmt
+      port: 6199
+      targetPort: license-mgmt
+      protocol: TCP
+{{- end }}

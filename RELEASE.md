@@ -1,5 +1,21 @@
 # Launch Notes
 
+## 2.6.1 (6/17/2026)
+
+### New Features
+- Added opt-in MongoDB security for Docker Compose: authentication, TLS with configurable server mode, mutual TLS, and encryption at rest.
+- Added opt-in MongoDB TLS, mutual TLS, and encryption at rest to the Helm chart.
+- Added FIPS deployment support for Docker Compose and Helm, using Percona Server for MongoDB and FIPS-mode TLS.
+- Added an optional xGT License Manager for multiple licenses and live license updates without restarting xGT.
+- Added database-maintenance scripts for backup and restore, user-profile editing, and MongoDB TLS certificate generation.
+- Added the Anthropic Claude Opus 4.8 model.
+- Added signed, multi-architecture release images with SBOM and provenance attestations.
+
+### Fixed
+- Fixed bug where the schema graph rotated and jittered on hover, especially for graphs with many leaf nodes around a hub.
+- Fixed the HTTP-to-HTTPS redirect using the wrong port behind a reverse proxy on a non-standard SSL port.
+- Fixed Docker Compose leaving an orphaned anonymous MongoDB volume behind on each restart.
+
 ## 2.6.0 (4/2/2026)
 
 ### New Features
@@ -50,8 +66,7 @@
 - Improved text to query generation accuracy.
 - Added OpenAI ChatGPT 5.2 thinking and instant models.
 - Added Anthropic Claude 4.5 Haiku, Sonnet, and Opus models.
-- Queries now return vertices and edges as a single column instead of a column per property of the vertex or edge.
-  This fixes an issue where multiple instances of the same edge in results showed up more than once in the graph display.
+- Queries now return vertices and edges as a single column instead of a column per property of the vertex or edge.  This fixes an issue where multiple instances of the same edge in results showed up more than once in the graph display.
 - Added select and run button to histories to select and execute a history item with one click.
 - Added highlighting to the answer graph when hovering over nodes or edges in the Data Explorer.
 - Added frame legend with color picker to graph display.

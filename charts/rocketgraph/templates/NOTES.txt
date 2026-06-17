@@ -23,7 +23,10 @@ NOTE: Using external xGT at {{ .Values.backend.env.MC_DEFAULT_XGT_HOST }}{{ with
 {{- if not .Values.mongodb.enabled }}
 
 NOTE: Using external MongoDB.
-{{- else if not .Values.mongodb.auth.enabled }}
+{{- else if .Values.mongodb.auth.enabled }}
 
-WARNING: MongoDB authentication is disabled. Set mongodb.auth.enabled=true for production use.
+MongoDB auth: ENABLED (root user "rocketgraph").
+{{- else }}
+
+WARNING: MongoDB auth is DISABLED. Set mongodb.auth.enabled=true (with mongodb.auth.rootPassword or an existingSecret) for production use.
 {{- end }}

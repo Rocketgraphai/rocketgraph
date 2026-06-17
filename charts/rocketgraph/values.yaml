@@ -1,12 +1,5 @@
 imagePullSecrets: []
 
-# Per-component image version overrides. If set, takes precedence over
-# each component's image.tag. Falls back to Chart.appVersion if both are empty.
-imageVersions:
-  frontend: ""
-  backend: ""
-  xgt: ""
-
 frontend:
   image:
     repository: docker.io/rocketgraph/mission-control-frontend
@@ -26,7 +19,11 @@ frontend:
     # minAvailable: 1    # defaults to 1 if neither field is set; use 0 if node drains must not be blocked
     # maxUnavailable: 1  # alternative to minAvailable
   podSecurityContext: {}
-  containerSecurityContext: {}
+  containerSecurityContext:
+    allowPrivilegeEscalation: false
+    # runAsNonRoot: true    # enable if the frontend image runs as a non-root user
+    # capabilities:
+    #   drop: [ALL]
   podAnnotations: {}
   nodeSelector: {}
   tolerations: []
@@ -58,9 +55,7 @@ backend:
     repository: docker.io/rocketgraph/mission-control-backend
     tag: ""  # Defaults to Chart.appVersion
     pullPolicy: IfNotPresent
-  autoscaling:
-    enabled: false  # When true, backend Deployment omits spec.replicas so HPA or kubectl scale can own replica count
-  replicas: 1
+  replicas: 1  # Must be 1 — session state is not shared across instances
   resources: {}
   # Recommended minimums:
   #   requests:
@@ -74,7 +69,11 @@ backend:
     # minAvailable: 1    # defaults to 1 if neither field is set; use 0 if node drains must not be blocked
     # maxUnavailable: 1  # alternative to minAvailable
   podSecurityContext: {}
-  containerSecurityContext: {}
+  containerSecurityContext:
+    allowPrivilegeEscalation: false
+    # runAsNonRoot: true    # enable if the backend image runs as a non-root user
+    # capabilities:
+    #   drop: [ALL]
   podAnnotations: {}
   nodeSelector: {}
   tolerations: []
@@ -150,9 +149,9 @@ mongodb:
   externalUriSecret: ""     # Secret name with key 'mongodb-uri' (preferred over externalUri)
   image:
     repository: docker.io/library/mongo
-    tag: latest
+    tag: 8.0.23
     pullPolicy: IfNotPresent
-  replicas: 1
+  replicas: 1  # Must be 1 — this chart deploys standalone MongoDB with no replica set; multiple replicas would be independent unconnected instances
   resources: {}
   # Recommended minimums:
   #   requests:
@@ -166,7 +165,11 @@ mongodb:
     # minAvailable: 1    # defaults to 1 if neither field is set; use 0 if node drains must not be blocked
     # maxUnavailable: 1  # alternative to minAvailable
   podSecurityContext: {}
-  containerSecurityContext: {}
+  containerSecurityContext:
+    allowPrivilegeEscalation: false
+    # runAsNonRoot: true    # enable if the MongoDB image runs as a non-root user (Percona uid 1001 qualifies; stock mongo uid 999 also qualifies)
+    # capabilities:
+    #   drop: [ALL]
   podAnnotations: {}
   nodeSelector: {}
   tolerations: []
@@ -184,9 +187,25 @@ mongodb:
     failureThreshold: 3
   auth:
     enabled: false
-    existingSecret: ""  # Must have keys: mongodb-root-username, mongodb-root-password
-    rootUsername: ""
+    existingSecret: ""  # Must have key: mongodb-root-password (user is always "rocketgraph")
     rootPassword: ""
+  # TLS for connections to MongoDB
+  tls:
+    enabled: false
+    existingSecret: ""  # Keys: server.pem (cert+key concatenated), ca.pem (required); optional: client.pem for mTLS
+    cert: ""            # Inline server cert PEM
+    key: ""             # Inline server key PEM
+    caCert: ""          # Inline CA cert PEM — required by mongod (5.0+) and used by the backend to verify the server
+    mode: requireTLS    # requireTLS | preferTLS | allowTLS
+    clientCert: ""      # Inline client cert PEM — used by the backend when mtls is true
+    clientKey: ""       # Inline client key PEM — used by the backend when mtls is true
+    mtls: false         # Require the backend to present a client cert; needs client.pem in existingSecret or inline clientCert/clientKey
+  # --tlsFIPSMode is added automatically when fips.enabled=true and TLS is on.
+  # Encryption at rest — requires MongoDB Enterprise or Percona Server for MongoDB
+  encryption:
+    enabled: false
+    existingSecret: ""  # Secret with key: encryption.key (32-byte base64-encoded key)
+    key: ""             # Inline encryption key
   persistence:
     size: 1Gi
     storageClassName: ""
@@ -198,7 +217,7 @@ xgt:
     repository: docker.io/rocketgraph/xgt
     tag: ""  # Defaults to Chart.appVersion
     pullPolicy: IfNotPresent
-  replicas: 1
+  replicas: 1  # Must be 1 — xgt does not support multi-instance deployments in this configuration
   resources: {}
   # Recommended minimums:
   #   requests:
@@ -212,7 +231,11 @@ xgt:
     # minAvailable: 1    # defaults to 1 if neither field is set; use 0 if node drains must not be blocked
     # maxUnavailable: 1  # alternative to minAvailable
   podSecurityContext: {}
-  containerSecurityContext: {}
+  containerSecurityContext:
+    allowPrivilegeEscalation: false
+    # runAsNonRoot: true    # enable if the xgt image runs as a non-root user
+    # capabilities:
+    #   drop: [ALL]
   podAnnotations: {}
   nodeSelector: {}
   tolerations: []
@@ -274,10 +297,99 @@ xgt:
   # gRPC health check port (plain gRPC, no TLS)
   healthCheck:
     port: 4366
+  # xGT License Manager — standalone deployment serving license files over port 6200.
+  # Multiple xGT instances connect to it by service name; license.location is set automatically.
+  licenseManager:
+    enabled: false
+    image:
+      repository: docker.io/rocketgraph/xgt-license-manager
+      tag: 1.5.1
+      pullPolicy: IfNotPresent
+    resources: {}
+    podSecurityContext:
+      fsGroup: 1000
+    containerSecurityContext:
+      runAsNonRoot: true
+      allowPrivilegeEscalation: false
+    podAnnotations: {}
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
+    service:
+      type: ClusterIP
+      annotations: {}
+    startupProbe:
+      periodSeconds: 10
+      timeoutSeconds: 5
+      failureThreshold: 30
+    readinessProbe:
+      periodSeconds: 10
+      timeoutSeconds: 5
+      failureThreshold: 3
+    livenessProbe:
+      periodSeconds: 30
+      timeoutSeconds: 5
+      failureThreshold: 3
+    licenseFiles:
+      existingSecret: ""  # Secret whose keys are mounted as files under /conf/licenses/
+      data: {}            # Map of filename to content, e.g. { "server.lic": "..." }
+    persistence:
+      conf:
+        size: 1Gi
+        storageClassName: ""
+        existingClaim: ""
+      log:
+        size: 1Gi
+        storageClassName: ""
+        existingClaim: ""
+
+ingress:
+  enabled: false
+  className: ""  # e.g. "nginx", "traefik", "alb" — maps to spec.ingressClassName
+  annotations: {}
+  # Common annotation examples:
+  #
+  # nginx ingress controller:
+  #   kubernetes.io/ingress.class: nginx
+  #   nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+  #
+  # cert-manager automatic TLS (pair with a tls entry below):
+  #   cert-manager.io/cluster-issuer: letsencrypt-prod
+  #
+  # AWS ALB controller:
+  #   kubernetes.io/ingress.class: alb
+  #   alb.ingress.kubernetes.io/scheme: internet-facing
+  #   alb.ingress.kubernetes.io/target-type: ip
+  hosts:
+    - host: chart-example.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+  # tls:
+  #   - secretName: rocketgraph-tls
+  #     hosts:
+  #       - chart-example.local
+
+fips:
+  # Set to true to use FIPS-compliant image variants.
+  # - frontend, backend, xgt, license manager: "-fips" is appended to the
+  #   image tag (e.g. "2.6.1-fips")
+  # - mongodb: switches to percona/percona-server-mongodb
+  # When TLS is also enabled, mongod gets --tlsFIPSMode automatically.
+  enabled: false
+  mongoImage:
+    repository: docker.io/percona/percona-server-mongodb
+    tag: 8.0.23
 
 openshift:
-  # Set to true when deploying on OpenShift — creates a ServiceAccount with anyuid SCC
+  # Set to true when deploying on OpenShift — creates a ServiceAccount bound to the SCC below.
   enabled: false
+  # SCC granted to the release ServiceAccount.
+  # anyuid   — required when any image has a fixed non-root UID (e.g. Percona MongoDB uid 1001).
+  # nonroot  — sufficient when all images declare a non-root USER but without a fixed UID;
+  #            pair with containerSecurityContext.runAsNonRoot: true on each component.
+  scc: anyuid
 
 networkPolicy:
   enabled: true

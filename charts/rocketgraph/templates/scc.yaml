@@ -2,13 +2,13 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: {{ .Release.Name }}-rocketgraph-anyuid-{{ .Release.Namespace }}
+  name: {{ .Release.Name }}-rocketgraph-{{ .Values.openshift.scc }}-{{ .Release.Namespace }}
   labels:
     {{- include "rocketgraph.labels" . | nindent 4 }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: system:openshift:scc:anyuid
+  name: system:openshift:scc:{{ .Values.openshift.scc }}
 subjects:
   - kind: ServiceAccount
     name: {{ include "rocketgraph.fullname.serviceaccount" . }}

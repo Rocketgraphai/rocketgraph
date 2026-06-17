@@ -31,25 +31,71 @@ spec:
       {{- if .Values.openshift.enabled }}
       serviceAccountName: {{ include "rocketgraph.fullname.serviceaccount" . }}
       {{- end }}
-      {{- with .Values.mongodb.podSecurityContext }}
+      {{- $podSecCtx := .Values.mongodb.podSecurityContext }}
+      {{- if and .Values.mongodb.encryption.enabled (not (hasKey (.Values.mongodb.podSecurityContext | default dict) "fsGroup")) }}
+      {{- $podSecCtx = merge (dict "fsGroup" 1001) ($podSecCtx | default dict) }}
+      {{- end }}
+      {{- with $podSecCtx }}
       securityContext:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      {{- if .Values.mongodb.encryption.enabled }}
+      initContainers:
+        - name: setup-encryption-key
+          image: "{{ include "rocketgraph.mongoImage" . }}"
+          imagePullPolicy: {{ .Values.mongodb.image.pullPolicy }}
+          securityContext:
+            runAsUser: {{ dig "runAsUser" 1001 (.Values.mongodb.containerSecurityContext | default dict) }}
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+          command:
+            - bash
+            - -c
+            - cp /tmp/enc-secret/encryption.key /tmp/enc-key/encryption.key && chmod 400 /tmp/enc-key/encryption.key
+          volumeMounts:
+            - name: mongodb-encryption-secret
+              mountPath: /tmp/enc-secret
+              readOnly: true
+            - name: mongodb-encryption
+              mountPath: /tmp/enc-key
+      {{- end }}
       containers:
         - name: mongodb
-          image: "{{ .Values.mongodb.image.repository }}:{{ .Values.mongodb.image.tag }}"
+          image: "{{ include "rocketgraph.mongoImage" . }}"
           imagePullPolicy: {{ .Values.mongodb.image.pullPolicy }}
+          {{- if or .Values.mongodb.tls.enabled .Values.mongodb.encryption.enabled }}
+          args:
+            - mongod
+            {{- if .Values.mongodb.tls.enabled }}
+            - --tlsMode
+            - {{ .Values.mongodb.tls.mode }}
+            - --tlsCertificateKeyFile
+            - /etc/ssl/mongodb/server.pem
+            - --tlsCAFile
+            - /etc/ssl/mongodb/ca.pem
+            {{- if not .Values.mongodb.tls.mtls }}
+            - --tlsAllowConnectionsWithoutCertificates
+            {{- end }}
+            {{- if .Values.fips.enabled }}
+            - --tlsFIPSMode
+            {{- end }}
+            {{- end }}
+            {{- if .Values.mongodb.encryption.enabled }}
+            - --enableEncryption
+            - --encryptionKeyFile
+            - /etc/mongodb-encryption/encryption.key
+            {{- end }}
+          {{- end }}
           {{- with .Values.mongodb.containerSecurityContext }}
           securityContext:
             {{- toYaml . | nindent 12 }}
           {{- end }}
           {{- if .Values.mongodb.auth.enabled }}
           env:
+            # The bundled MongoDB has a single root user, always "rocketgraph".
             - name: MONGO_INITDB_ROOT_USERNAME
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "rocketgraph.mongodbAuthSecret" . }}
-                  key: mongodb-root-username
+              value: rocketgraph
             - name: MONGO_INITDB_ROOT_PASSWORD
               valueFrom:
                 secretKeyRef:
@@ -62,43 +108,35 @@ spec:
               protocol: TCP
           readinessProbe:
             exec:
+              # Wrapped in `sh -c` so the shell expands $MONGO_INITDB_ROOT_* — Kubernetes
+              # does NOT expand $(VAR) in exec probe commands (only in command/args), so
+              # the credentials must be expanded by a shell or auth always fails.
               command:
-                {{- if .Values.mongodb.auth.enabled }}
-                - mongosh
-                - -u
-                - $(MONGO_INITDB_ROOT_USERNAME)
-                - -p
-                - $(MONGO_INITDB_ROOT_PASSWORD)
-                - --authenticationDatabase
-                - admin
-                - --eval
-                - "db.adminCommand('ping')"
-                {{- else }}
-                - mongosh
-                - --eval
-                - "db.adminCommand('ping')"
-                {{- end }}
+                - sh
+                - -c
+                - >-
+                  mongosh
+                  {{- if .Values.mongodb.tls.enabled }} --tls --tlsCAFile /etc/ssl/mongodb/ca.pem --tlsAllowInvalidHostnames
+                  {{- if .Values.mongodb.tls.mtls }} --tlsCertificateKeyFile /etc/ssl/mongodb/client.pem{{- end }}
+                  {{- end }}
+                  {{- if .Values.mongodb.auth.enabled }} -u "$MONGO_INITDB_ROOT_USERNAME" -p "$MONGO_INITDB_ROOT_PASSWORD" --authenticationDatabase admin{{- end }}
+                  --eval "db.adminCommand('ping')"
             periodSeconds: {{ .Values.mongodb.readinessProbe.periodSeconds }}
             timeoutSeconds: {{ .Values.mongodb.readinessProbe.timeoutSeconds }}
             failureThreshold: {{ .Values.mongodb.readinessProbe.failureThreshold }}
           livenessProbe:
             exec:
+              # See readinessProbe note: $(VAR) is not expanded in exec probes, so wrap in `sh -c`.
               command:
-                {{- if .Values.mongodb.auth.enabled }}
-                - mongosh
-                - -u
-                - $(MONGO_INITDB_ROOT_USERNAME)
-                - -p
-                - $(MONGO_INITDB_ROOT_PASSWORD)
-                - --authenticationDatabase
-                - admin
-                - --eval
-                - "db.adminCommand('ping')"
-                {{- else }}
-                - mongosh
-                - --eval
-                - "db.adminCommand('ping')"
-                {{- end }}
+                - sh
+                - -c
+                - >-
+                  mongosh
+                  {{- if .Values.mongodb.tls.enabled }} --tls --tlsCAFile /etc/ssl/mongodb/ca.pem --tlsAllowInvalidHostnames
+                  {{- if .Values.mongodb.tls.mtls }} --tlsCertificateKeyFile /etc/ssl/mongodb/client.pem{{- end }}
+                  {{- end }}
+                  {{- if .Values.mongodb.auth.enabled }} -u "$MONGO_INITDB_ROOT_USERNAME" -p "$MONGO_INITDB_ROOT_PASSWORD" --authenticationDatabase admin{{- end }}
+                  --eval "db.adminCommand('ping')"
             initialDelaySeconds: {{ .Values.mongodb.livenessProbe.initialDelaySeconds }}
             periodSeconds: {{ .Values.mongodb.livenessProbe.periodSeconds }}
             timeoutSeconds: {{ .Values.mongodb.livenessProbe.timeoutSeconds }}
@@ -110,6 +148,15 @@ spec:
           volumeMounts:
             - name: mongodb-data
               mountPath: /data/db
+            {{- if .Values.mongodb.tls.enabled }}
+            - name: mongodb-tls
+              mountPath: /etc/ssl/mongodb
+              readOnly: true
+            {{- end }}
+            {{- if .Values.mongodb.encryption.enabled }}
+            - name: mongodb-encryption
+              mountPath: /etc/mongodb-encryption
+            {{- end }}
       {{- with .Values.mongodb.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
@@ -127,4 +174,25 @@ spec:
         - name: mongodb-data
           persistentVolumeClaim:
             claimName: {{ .Values.mongodb.persistence.existingClaim | default (printf "%s-mongodb-data" .Release.Name) }}
+        {{- if .Values.mongodb.tls.enabled }}
+        - name: mongodb-tls
+          secret:
+            secretName: {{ include "rocketgraph.mongodbTlsSecret" . }}
+            items:
+              - key: server.pem
+                path: server.pem
+              - key: ca.pem
+                path: ca.pem
+              {{- if .Values.mongodb.tls.mtls }}
+              - key: client.pem
+                path: client.pem
+              {{- end }}
+        {{- end }}
+        {{- if .Values.mongodb.encryption.enabled }}
+        - name: mongodb-encryption
+          emptyDir: {}
+        - name: mongodb-encryption-secret
+          secret:
+            secretName: {{ include "rocketgraph.mongodbEncryptionSecret" . }}
+        {{- end }}
 {{- end }}

@@ -37,9 +37,11 @@ data:
     {{- .Values.xgt.config.proxyList | nindent 4 }}
   {{- end }}
   xgtd.conf: |
+    {{- $hasDirectLicense := or (not (empty .Values.xgt.license.existingSecret)) (not (empty .Values.xgt.license.data)) }}
+    {{- $licenseLocation := ternary (printf "6200@%s" (include "rocketgraph.fullname.licenseManager" .)) (ternary "/license/xgtd.lic" "6200@localhost:/conf/licenses/xgtd.lic" $hasDirectLicense) .Values.xgt.licenseManager.enabled }}
     {{- $defaults := dict
       "audit.config_file" "/conf/audit.xml"
-      "license.location" "6200@localhost:/conf/licenses/xgtd.lic"
+      "license.location" $licenseLocation
       "logging.filepath" "/log"
       "logging.fileprefix" "xgtd"
       "logging.log_to_console" "true"
