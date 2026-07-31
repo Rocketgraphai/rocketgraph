@@ -229,6 +229,11 @@
               "type": "boolean",
               "description": "Enable browser mTLS; mounts chain.pem from existingSecret or certChain as the CA for validating browser client certificates",
               "default": false
+            },
+            "external": {
+              "type": "boolean",
+              "description": "Set when TLS is terminated upstream (Ingress TLS or an edge-terminated route) so the backend marks session cookies Secure",
+              "default": false
             }
           }
         }

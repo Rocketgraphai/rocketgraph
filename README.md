@@ -8,11 +8,13 @@ For organizations managing large and intricate datasets, particularly in critica
 
 Rocketgraph Mission Control is a web application for driving property graph workloads in the [Rocketgraph xGT server](https://docs.rocketgraph.com).
 
-## Quick Installation
+## Quick Start
 
 Perform these steps to install and run Rocketgraph Mission Control and Rocketgraph xGT on a server.
 
- 1. Make sure Docker is running.  You may need to start (or install) a [Docker Desktop](https://docs.docker.com/desktop/) or [Docker Engine](https://docs.docker.com/engine/).  To verify that Docker is working, run the following command.  You should see information about the Docker environment.
+These five steps bring up a default stack on a machine with internet access.  For a production install — air-gapped hosts, SSL certificates, custom data and log directories, or an xGT server that isn't part of the Compose project — follow [Full Installation](#full-installation) instead.
+
+ 1. Make sure Docker is running.  You may need to start (or install) a [Docker Desktop](https://docs.docker.com/desktop/) or [Docker Engine](https://docs.docker.com/engine/).  To verify that Docker is working, run the following command.  You should see information about the Docker environment.  If you are using Podman rather than Docker, read [Running Under Podman](#running-under-podman) first — a rootless install needs additional setup before these steps will work.
     ```bash
     $ docker info
     ```
@@ -20,7 +22,6 @@ Perform these steps to install and run Rocketgraph Mission Control and Rocketgra
  1. Copy the `docker-compose.yml` file from this repo to your server or laptop.
 
  1. If installing on IBM Power Series, create a `.env` file in the same directory as the `docker-compose.yml` file containing this line:
-
     ```env
     MC_MONGODB_IMAGE=ibmcom/mongodb-ppc64le
     ```
@@ -32,7 +33,33 @@ Perform these steps to install and run Rocketgraph Mission Control and Rocketgra
 
  1. Aim a browser to `localhost` on the system running this Docker application and log in to Mission Control.
 
-## Installation
+## Supported Container Platforms
+
+Mission Control runs on four container platforms.  All four deploy the same four containers — frontend, backend, xgt, and MongoDB — and support the same features; they differ only in how you configure and launch them.
+
+| Platform | Deployed with | Start here |
+|---|---|---|
+| **Docker** (Desktop or Engine) | the `docker-compose*.yml` files in this repo | [Quick Start](#quick-start) above, or [Full Installation](#full-installation) |
+| **Podman** (rootless or root) | the same Compose files, via `podman-compose` | [Running Under Podman](#running-under-podman) — read this first, then follow the Docker instructions |
+| **Kubernetes** | the Helm chart in [`charts/rocketgraph/`](charts/rocketgraph/) | [Helm chart documentation](charts/rocketgraph/README.md) |
+| **OpenShift** | the same Helm chart, with `openshift.enabled=true` | [OpenShift](charts/rocketgraph/README.md#openshift) in the Helm chart documentation |
+
+The rest of this document covers the Compose-based platforms, Docker and Podman.
+
+## In-Depth Guides
+
+The guides below cover individual topics in depth.  The first four apply to every platform: their examples are written for Docker Compose and Podman, and each one notes the Kubernetes and OpenShift equivalent.
+
+| Guide | What it covers |
+|---|---|
+| [MongoDB Security](doc/mongodb_security.md) | Authentication, TLS, mutual TLS, and encryption at rest for the bundled MongoDB |
+| [OIDC Authentication](doc/oidc_configuration.md) | Signing users in through an external identity provider such as Keycloak or OpenShift |
+| [Site LLM Configuration](doc/llm_site_config.md) | Which AI models Mission Control offers, their endpoints, and their credentials |
+| [ODBC Configuration](doc/odbc_configuration.md) | Loading data from external databases — PostgreSQL, MariaDB, and IBM i (AS/400) |
+| [Deployment Reference](doc/deployment_reference.md) | Per-container images, ports, volume paths, and environment variables — for orchestrators not listed above, or for debugging a running container |
+| [Helm Chart](charts/rocketgraph/README.md) | Deploying on Kubernetes and OpenShift, and every value the chart accepts |
+
+## Compose Files and Images
 
 Rocketgraph Mission Control uses Docker Compose with these Docker images:
  - [rocketgraph/xgt](https://hub.docker.com/r/rocketgraph/xgt)
@@ -51,9 +78,11 @@ The overlays layer on top of the base — keep `docker-compose.yml` alongside th
 docker compose -f docker-compose.yml -f docker-compose.fips.yml up -d
 ```
 
-Rocketgraph Mission Control can be run using either Docker Desktop or Docker Engine only.  Further references to Docker Engine in the Installation section refer to a Docker Engine install without Docker Desktop.
+Rocketgraph Mission Control can be run using either Docker Desktop or Docker Engine only.  Further references to Docker Engine in this document refer to a Docker Engine install without Docker Desktop.
 
-### Configuration for the xGT Server
+The instructions in this document are written for Docker.  The same Compose files run under Podman and everything here applies there too — but a rootless Podman install has three additional constraints to handle first.  See [Running Under Podman](#running-under-podman).
+
+## Configuration for the xGT Server
 
 The Mission Control frontend, backend, and database containers must be run on the same host.  However, the xGT server can be run in the following ways:
  - In a Docker container as part of the Compose project.
@@ -61,7 +90,7 @@ The Mission Control frontend, backend, and database containers must be run on th
  - Installed from an RPM on the same host as Mission Control.
  - On a different host than Mission Control, either in a Docker container or installed from an RPM.
 
-#### xGT as Part of the Compose Project
+### xGT as Part of the Compose Project
 
 The hostname to use when logging into Rocketgraph Mission Control is either `xgt`, the name of the service for the xGT server in the docker-compose.yml file, or the host's external IP.
 
@@ -79,7 +108,7 @@ Another difference is that volume mapping is setup in the Compose file instead o
       - /host/map/dir:/container/map/dir
 ```
 
-#### xGT in an Isolated Container on the Mission Control Host
+### xGT in an Isolated Container on the Mission Control Host
 
 Here is an example of starting the xGT server in an isolated container:
 ```bash
@@ -91,7 +120,7 @@ $ docker run --name xgt --detach --publish 4367:4367 \
 ```
 This command exposes port 4367 to the host.  The xGT server listens on port 4367.  Exposing this port is required for Rocketgraph Mission Control to communicate with the isolated container.  The command also volume maps a config directory, a data directory, and a log directory.  Change the command to map only the directories you need and point to the correct host directories.  See the [documentation for running xGT in a Docker container](https://docs.rocketgraph.com/using_docker_image/index.html) for more details.
 
-Comment out or delete the xgt section in the docker-compose.yml file.
+Comment out or delete the `xgt` service section in the docker-compose.yml file.
 
 Use the host's external IP as the hostname when logging into Rocketgraph Mission Control.
 
@@ -102,7 +131,7 @@ Another option for the login hostname is to use either `localhost` or `host.dock
 ```
 Docker Desktop automatically provides the translation of "host.docker.internal" to the gateway IP of the default bridge network.  These lines add the translation in Docker Engine.  Mission Control translates "localhost" to "host.docker.internal" to provide a shorter more commonly understood hostname.
 
-#### xGT Installed from an RPM on the Mission Control Host
+### xGT Installed from an RPM on the Mission Control Host
 
 The xGT server configuration variable `system.hostname` must be set appropriately when connecting Rocketgraph Mission Control to an RPM installed xGT.  See the [xGT configuration documentation](https://docs.rocketgraph.com/sysadmin_guide/configuration.html) for more details.  One option is to set "system.hostname" to the host's external IP.  If access on 127.0.0.1 is desired in addition to access via the host's external IP, set "system.hostname" to "0.0.0.0".
 
@@ -125,7 +154,7 @@ Look for a section like this
 ```
 The gateway IP is the value for "Gateway".
 
-After setting the value for "system.hostname" and starting the xGT server, comment out or delete the xgt section in the docker-compose.yml file.
+After setting the value for "system.hostname" and starting the xGT server, comment out or delete the `xgt` service section in the docker-compose.yml file.
 
 Use the host's external IP as the hostname when logging into Rocketgraph Mission Control.
 
@@ -136,15 +165,15 @@ If the xGT server is configured for access via 127.0.0.1, another option for the
 ```
 Docker Desktop automatically provides the translation of "host.docker.internal" to the gateway IP of the default bridge network.  These lines add the translation in Docker Engine.  Mission Control translates "localhost" to "host.docker.internal" to provide a shorter more commonly understood hostname.
 
-#### xGT on a Different Host
+### xGT on a Different Host
 
 The xGT server can be running on the other host either in a Docker container or installed from an RPM.
 
-Comment out or delete the xgt section in the docker-compose.yml file.
+Comment out or delete the `xgt` service section in the docker-compose.yml file.
 
 Use the IP of the host where the xGT server is running as the hostname when logging into Rocketgraph Mission Control.
 
-### Environment Variables
+## Environment Variables
 
 There are a number of environment variables that configure Mission Control and the xGT server.  Variables that start with MC_ configure Mission Control, while variables that start with XGT_ configure the server.  We suggest putting definitions of the environment variables in a .env file in the same directory as the docker-compose.yml file.  That way they will be available for all Docker Compose commands.
 
@@ -157,48 +186,76 @@ MC_SSL_PRIVATE_KEY=/directory/to/ssl/td-private-key.pem
 
 The configurable environment variables are:
 
+### Container Images
+
 |Variable                |Volume Mapped|Description|
 |------------------------|-|-----------|
 |MC_FRONTEND_IMAGE       | |image location for MC frontend; default is the version pinned in docker-compose.yml|
 |MC_BACKEND_IMAGE        | |image location for MC backend; default is the version pinned in docker-compose.yml|
-|MC_PORT                 | |alternative port for the http web server|
-|MC_SSL_PORT             | |alternative port for the https web server|
+|MC_MONGODB_IMAGE        | |used to specify the mongodb image for Power10 installs|
+|XGT_IMAGE               | |image location for XGT; default is the version pinned in docker-compose.yml|
+|MC_LICENSE_MANAGER_IMAGE| |image for the optional xGT License Manager service (`docker-compose.license-manager.yml`); switch to the `-fips` tag for FIPS deployments|
+
+### Web Server Ports and TLS
+
+|Variable                |Volume Mapped|Description|
+|------------------------|-|-----------|
+|MC_PORT                 | |alternative host port for the http web server (default 80); must be ≥ 1024 under rootless Podman — see [Running Under Podman](#running-under-podman)|
+|MC_SSL_PORT             | |alternative host port for the https web server (default 443); must be ≥ 1024 under rootless Podman — see [Running Under Podman](#running-under-podman)|
+|MC_EXTERNAL_TLS         | |set to `true` when HTTPS is terminated by a proxy in front of Mission Control so session cookies are marked Secure; unnecessary when Mission Control serves HTTPS itself|
+|MC_SSL_PUBLIC_CERT      |Y|path to certificate on host to setup an https web server|
+|MC_SSL_PRIVATE_KEY      |Y|path to private key on host to setup an https web server|
+|MC_SSL_CERT_CHAIN       |Y|path to certificate chain used by the https web server to validate client certificates for mTLS|
+
+### xGT Server
+
+|Variable                |Volume Mapped|Description|
+|------------------------|-|-----------|
+|XGT_PORT                | |port the xGT server should listen on|
+|XGT_CONF_PATH           |Y|path to the configuration directory on host for the xGT server|
+|XGT_DATA_PATH           |Y|path to the data directory on host for the xGT server|
+|XGT_LOG_PATH            |Y|path to the log directory on host for the xGT server|
+|XGT_AUTH_TYPES          | |sets xGT server authentication types available in Mission Control; unset offers all of BasicAuth, FilePKIAuth, and PKIAuth; `"[]"` runs single-user mode with no login|
 |MC_DEFAULT_XGT_HOST     | |default login host for Mission Control|
 |MC_DEFAULT_XGT_PORT     | |default login port for Mission Control|
-|MC_IBM_IACCESS_PATH     |Y|root directory for IBM i Access Client|
-|MC_ODBC_LIBRARY_PATH    | |directory for IBM i driver libraries|
-|MC_ODBC_PATH            |Y|path to ODBC drivers for the connector|
-|MC_MONGODB_IMAGE        | |used to specify the mongodb image for Power10 installs|
+|MC_XGT_ALLOWED_HOSTS    | |comma-separated allowlist of permitted xGT servers as `host:port` pairs; `*` wildcards supported (e.g. `xgt-*.xgt.myns.svc.cluster.local:4367`); when set, connections to any non-matching host are rejected; recommended when the xGT host is user-supplied (prevents SSRF)|
+
+### Backend-to-xGT TLS
+
+|Variable                |Volume Mapped|Description|
+|------------------------|-|-----------|
+|XGT_SSL_SERVER_CERT     |Y|path to chain file on host for the xGT server’s certificate|
+|XGT_SERVER_CN           | |common name on the xGT server’s certificate|
+|MC_SSL_PROXY_PUBLIC_CERT|Y|path to certificate on host to use as a proxy connection to the xGT server|
+|MC_SSL_PROXY_PRIVATE_KEY|Y|path to private key on host to use as a proxy connection to the xGT server|
+
+### MongoDB
+
+|Variable                |Volume Mapped|Description|
+|------------------------|-|-----------|
+|MC_MONGO_URI            | |location of the database used by Mission Control; auto-constructed from `MC_MONGO_PASSWORD` when set, override directly to point at an external MongoDB|
 |MC_MONGO_PASSWORD       | |MongoDB root password; set it to enable MongoDB auth (`--auth` + `?authSource=admin`). The root user is always `rocketgraph`; leave unset for no auth|
 |MC_MONGO_TLS_ENABLED    | |set to `true` to enable TLS between the backend and MongoDB; requires `MC_MONGO_TLS_SERVER_PEM` and `MC_MONGO_TLS_CA_PEM`|
 |MC_MONGO_TLS_MODE       | |mongod TLS server mode: `requireTLS` (default), `preferTLS`, or `allowTLS`; use `preferTLS`/`allowTLS` for migrations|
 |MC_MONGO_MTLS_ENABLED   | |set to `true` to require client certs (mutual TLS); off by default (server-only TLS); needs `MC_MONGO_TLS_CLIENT_PEM`|
-|MC_MONGO_TLS_CLIENT_PEM |Y|path to the client cert+key PEM the backend presents under mTLS; required when mTLS is enabled|
 |MC_MONGO_TLS_SERVER_PEM |Y|path to MongoDB server cert+key PEM (concatenated); used when `MC_MONGO_TLS_ENABLED=true`|
+|MC_MONGO_TLS_CLIENT_PEM |Y|path to the client cert+key PEM the backend presents under mTLS; required when mTLS is enabled|
 |MC_MONGO_TLS_CA_PEM     |Y|path to MongoDB CA cert PEM; used when `MC_MONGO_TLS_ENABLED=true` (mounted into both mongodb and backend)|
 |MC_MONGO_ENCRYPTION_ENABLED| |set to `true` to enable MongoDB application-level encryption at rest (FIPS overlay only — requires Percona)|
 |MC_MONGO_ENCRYPTION_KEY_FILE|Y|path to a 32-byte base64-encoded key file; required when `MC_MONGO_ENCRYPTION_ENABLED=true`|
-|MC_MONGO_URI            | |location of the database used by Mission Control; auto-constructed from `MC_MONGO_PASSWORD` when set, override directly to point at an external MongoDB|
-|MC_SESSION_TTL          | |seconds from last event that MC login is valid|
-|MC_SITE_CONFIG_YML      |Y|path to site yaml config file|
-|MC_SITE_CONFIG_PY       |Y|path to site python custom LLM config file|
-|MC_SSL_PUBLIC_CERT      |Y|path to certificate on host to setup an https web server|
-|MC_SSL_PRIVATE_KEY      |Y|path to private key on host to setup an https web server|
-|MC_SSL_CERT_CHAIN       |Y|path to certificate chain used by the https web server to validate client certificates for mTLS|
-|MC_SSL_PROXY_PUBLIC_CERT|Y|path to certificate on host to use as a proxy connection to the xGT server|
-|MC_SSL_PROXY_PRIVATE_KEY|Y|path to private key on host to use as a proxy connection to the xGT server|
-|XGT_IMAGE               | |image location for XGT; default is the version pinned in docker-compose.yml|
-|XGT_PORT                | |port the xGT server should listen on|
+
+### Licensing
+
+|Variable                |Volume Mapped|Description|
+|------------------------|-|-----------|
 |XGT_LICENSE_FILE        |Y|path to xGT license file (used when no license manager is enabled)|
-|MC_LICENSE_MANAGER_IMAGE| |image for the optional xGT License Manager service (`docker-compose.license-manager.yml`); switch to the `-fips` tag for FIPS deployments|
 |MC_LICENSE_MANAGER_CONF_PATH|Y|host config directory for the License Manager; place `.lic` files in its `licenses/` subdirectory (default `~/.rocketgraph/license-manager/conf`)|
 |MC_LICENSE_MANAGER_LOG_PATH|Y|host log directory for the License Manager (default `~/.rocketgraph/license-manager/log`)|
-|XGT_CONF_PATH           |Y|path to the configuration directory on host for the xGT server|
-|XGT_DATA_PATH           |Y|path to the data directory on host for the xGT server|
-|XGT_LOG_PATH            |Y|path to the log directory on host for the xGT server|
-|XGT_AUTH_TYPES          | |sets xGT server authentication types available in Mission Control|
-|XGT_SSL_SERVER_CERT     |Y|path to chain file on host for the xGT server’s certificate|
-|XGT_SERVER_CN           | |common name on the xGT server’s certificate|
+
+### OIDC Authentication
+
+|Variable                |Volume Mapped|Description|
+|------------------------|-|-----------|
 |MC_OIDC_ISSUER          | |*(experimental)* OIDC issuer URL; if empty, discovered from the xGT server|
 |MC_OIDC_CLIENT_ID       | |*(experimental)* OAuth2 client ID; if empty, discovered from the xGT server|
 |MC_OIDC_CLIENT_SECRET   | |*(experimental)* client secret for confidential OAuth2 clients|
@@ -208,11 +265,31 @@ The configurable environment variables are:
 |MC_OIDC_ALLOWED_ORIGINS | |*(experimental)* comma-separated list of permitted frontend origins; `*` wildcards supported (e.g. `https://*.apps.cluster.example.com`); optional defense-in-depth|
 |MC_OIDC_TLS_VERIFY      | |*(experimental)* TLS verification for OIDC calls: `true` (default), `false`, or a path to a CA bundle|
 |MC_OIDC_CA_CERT         |Y|*(experimental)* path to a CA bundle PEM file to trust for OIDC HTTPS calls|
-|MC_XGT_ALLOWED_HOSTS    | |comma-separated allowlist of permitted xGT servers as `host:port` pairs; `*` wildcards supported (e.g. `xgt-*.xgt.myns.svc.cluster.local:4367`); when set, connections to any non-matching host are rejected; recommended when the xGT host is user-supplied (prevents SSRF)|
+
+### Database Connectivity (ODBC)
+
+|Variable                |Volume Mapped|Description|
+|------------------------|-|-----------|
+|MC_ODBC_PATH            |Y|path to ODBC drivers for the connector|
+|MC_ODBC_LIBRARY_PATH    | |directory for IBM i driver libraries|
+|MC_IBM_IACCESS_PATH     |Y|root directory for IBM i Access Client|
+
+### Site and LLM Configuration
+
+|Variable                |Volume Mapped|Description|
+|------------------------|-|-----------|
+|MC_SITE_CONFIG_YML      |Y|path to site yaml config file|
+|MC_SITE_CONFIG_PY       |Y|path to site python custom LLM config file|
+
+### Sessions
+
+|Variable                |Volume Mapped|Description|
+|------------------------|-|-----------|
+|MC_SESSION_TTL          | |seconds of user inactivity before an MC login expires; users get an idle warning dialog before being logged out|
 
 The variables that are volume mapped map point to a file or directory on the host that gets mapped to an expected location in the containers.
 
-### Instructions
+## Full Installation
 
  1. Copy the `docker-compose.yml` file from this repo to your server or laptop.
 
@@ -285,7 +362,7 @@ The variables that are volume mapped map point to a file or directory on the hos
     MC_DEFAULT_XGT_PORT=4368
     ```
 
- 1. (Optional) Select the xGT server authentication types available to Mission Control users using the environment variable XGT_AUTH_TYPES.  The supported types are 'BasicAuth', which uses a username and password, and 'PKIAuth'.  The default is to support both types.  The value of XGT_AUTH_TYPES must be a string representing a JSON list of the selected types.  This example allows only username / password authentication:
+ 1. (Optional) Select the xGT server authentication types available to Mission Control users using the environment variable XGT_AUTH_TYPES.  The supported types are 'BasicAuth', which uses a username and password, 'PKIAuth', which uses the PKI certificates set up in the browser, and 'FilePKIAuth', which uses certificate and key files selected at login.  When the variable is unset, all three types are offered.  An empty list runs Mission Control in single-user mode with no login — this is what the provided env.template sets.  The value of XGT_AUTH_TYPES must be a string representing a JSON list of the selected types.  This example allows only username / password authentication:
     ```dotenv
     XGT_AUTH_TYPES="['BasicAuth']"
     ```
@@ -302,13 +379,113 @@ The variables that are volume mapped map point to a file or directory on the hos
 
  1. Aim a browser to the system running this Docker application and log in to Mission Control.
 
+## Running Under Podman
+
+The Compose files also work with `podman-compose`.  Follow [Full Installation](#full-installation) above, substituting `podman-compose` for `docker compose` throughout, and configure the xGT server and environment variables exactly as described there.
+
+Two similarly named tools exist.  `podman-compose` (with a hyphen) is the standalone Python tool these instructions refer to.  `podman compose` (without one) is a Podman subcommand that delegates to whichever compose provider is installed on the machine — if that provider is Docker Compose, the Docker instructions apply as written.
+
+Use `podman-compose` 1.6.0 or newer together with Podman 4.6.0 or newer.  The Compose files start the containers in dependency order using health checks, and older versions of either tool do not reliably enforce that ordering, so containers can start before the services they depend on are ready.
+
+This section covers only what differs — three constraints, all of them consequences of running rootless: which host ports you can publish, who owns the mounted directories, and what happens at boot.  Read them before your first `podman-compose up`; the first two will otherwise stop the stack from starting.
+
+### Host Ports
+
+**Rootless Podman cannot publish host ports below 1024.**  Running rootless is the preferred way to use Podman, but the kernel reserves privileged ports for root, so an unprivileged `podman-compose up` cannot bind the host ports 80 and 443 that `docker-compose.yml` publishes by default.  Publish unprivileged ports instead by setting both in the `.env` file:
+
+```dotenv
+MC_PORT=8080
+MC_SSL_PORT=8443
+```
+
+Mission Control is then reachable at `http://<host>:8080` and `https://<host>:8443`.
+
+Nothing in Mission Control can move those back to 80 and 443 under a rootless install — publishing a privileged port requires privilege the container engine does not have.  To serve the standard ports from the host running the Mission Control containers, set up the mapping on the host yourself.  The options, roughly in order of how well they preserve the rootless security posture:
+
+- **Reverse proxy.**  Run nginx or HAProxy on the host, listening on 80 and 443 and forwarding to 8080 and 8443.  If the proxy terminates TLS itself and forwards plain HTTP to 8080, also set `MC_EXTERNAL_TLS=true` so session cookies are marked `Secure`; if it passes TLS through to 8443, Mission Control terminates TLS itself and `MC_EXTERNAL_TLS` is unnecessary.
+- **Kernel redirect or socket activation.**  An `iptables`/`nftables` `REDIRECT` rule (80 → 8080, 443 → 8443) moves the traffic with no extra process to run.  Alternatively, a systemd socket unit can hold the privileged listening socket and hand connections to the rootless container.  Both need root once, to install the rule or unit, not to run the containers.
+- **Lower the unprivileged port floor.**  Setting `net.ipv4.ip_unprivileged_port_start=80` via `sysctl` lets rootless Podman bind 80 and 443 directly, so the default `MC_PORT`/`MC_SSL_PORT` values work unchanged.  This is host-wide: every unprivileged process on the machine gains the ability to bind those ports.
+- **Run Podman as root.**  `sudo podman-compose up --detach` publishes 80 and 443 with no additional setup, at the cost of the isolation a rootless install provides.
+
+One caveat applies to the first two options, which leave Mission Control's own ports unprivileged while the browser reaches it on 80 or 443.  Because the OIDC redirect URI is derived from `MC_PORT`/`MC_SSL_PORT` (see [OIDC Authentication](#oidc-authentication-experimental)), it will carry the internal port and will not match what the browser sees.  Set `MC_OIDC_FRONTEND_URL` (and `MC_OIDC_REDIRECT_URI` if the identity provider needs an exact value) to the externally visible URL.
+
+### Volume Ownership
+
+Rootless Podman runs containers inside a user namespace.  Your login UID maps to UID 0 (root) inside the container, and every other container UID maps to a value from the range assigned to you in `/etc/subuid`.  The consequence is that a host directory you own looks root-owned to a container process running as root — which works — but looks owned by `nobody` to a container process running as any other UID, which cannot write to it.
+
+The stack bind-mounts these host directories read-write:
+
+|Environment variable|Container path|Service|
+|---|---|---|
+|XGT_CONF_PATH|`/conf`|xgt|
+|XGT_DATA_PATH|`/data`|xgt|
+|XGT_LOG_PATH|`/log`|xgt|
+|MC_LICENSE_MANAGER_CONF_PATH|`/conf`|license-manager (optional overlay)|
+|MC_LICENSE_MANAGER_LOG_PATH|`/log`|license-manager (optional overlay)|
+
+Any container running as a non-root UID needs its mounted directories chowned to that UID.  Today that is the license manager, whose image runs as uid 1000 (see the [deployment reference](doc/deployment_reference.md#xgt-license-manager)).  Do the chown from inside the user namespace:
+
+```bash
+podman unshare chown -R 1000:1000 \
+    ~/.rocketgraph/license-manager/conf \
+    ~/.rocketgraph/license-manager/log
+```
+
+`podman unshare` runs the command in the same user namespace the containers use, so the UID you name is the container-side UID and the files end up owned by the matching subuid on the host.  A plain `chown 1000:1000` run directly on the host sets the wrong owner and does not fix the problem.
+
+The symptom of getting this wrong is a container that exits shortly after starting with a permission error on `/conf`, `/data`, or `/log`, or one that runs but never writes a log file.  Check with `podman-compose logs license-manager`.
+
+Podman also accepts a `:U` volume option that chowns the mount contents to the container's UID automatically.  It is more convenient, but it rewrites the ownership of everything already in the directory, and `docker` rejects the option — adding it to a Compose file makes that file Podman-only.  Prefer `podman unshare chown` and keep the Compose files portable across both engines.
+
+### Starting the Stack at Boot
+
+Docker's daemon restarts containers that carry a `restart:` policy when the host boots.  Rootless Podman has no daemon — the containers belong to your user session and stop when that session ends, at logout as well as at reboot.  Two settings change that:
+
+```bash
+loginctl enable-linger "$USER"
+systemctl --user enable --now podman-restart.service
+```
+
+`enable-linger` keeps your user manager running while you are logged out, and `podman-restart.service` starts your containers again after a reboot.
+
+**The restart policies as shipped are not enough on their own.**  `podman-restart.service` only starts containers whose restart policy is `always`, and of the bundled services only `mongodb` sets that — `frontend` and `license-manager` use `on-failure`, while `backend` and `xgt` set no policy at all.  Those four will not come back after a reboot.  Raise the policies with a small override file:
+
+```yaml
+# docker-compose.podman.yml — layer after docker-compose.yml
+services:
+  frontend:
+    restart: always
+  backend:
+    restart: always
+  xgt:
+    restart: always
+```
+
+```bash
+podman-compose -f docker-compose.yml -f docker-compose.podman.yml up --detach
+```
+
+Add a `license-manager` entry to that override as well if you use the license-manager overlay, and place the override last on the command line so it applies after the service is defined.
+
+For a production single-host install, prefer generating systemd units and letting systemd own the lifecycle instead: Quadlet (`.container` files under `~/.config/containers/systemd/`) is the current mechanism, and `podman generate systemd` still works but is deprecated.  Units also give you startup ordering and dependency control that Compose `restart:` policies do not.
+
+Under rootful Podman (`sudo podman-compose`), enable the system-wide unit rather than the user one.  The same restart-policy caveat applies:
+
+```bash
+sudo systemctl enable --now podman-restart.service
+```
+
 ## Kubernetes / OpenShift
 
 Rocketgraph Mission Control can also be deployed on Kubernetes or OpenShift using the Helm chart in the [`charts/rocketgraph/`](charts/rocketgraph/) directory.  Refer to the [Helm chart documentation](charts/rocketgraph/README.md) for installation and configuration instructions, including OpenShift-specific setup, TLS, OIDC, LDAP, and more.
 
 For other container orchestration platforms, the [deployment reference](doc/deployment_reference.md) documents each container's images, ports, volumes, and environment variables.
 
-## MongoDB Security
+## Features and Operations
+
+These sections cover optional features and routine operations for the Compose-based install.  Several have Kubernetes and OpenShift equivalents documented in the [Helm chart documentation](charts/rocketgraph/README.md).
+
+### MongoDB Security
 
 The bundled MongoDB ships with no authentication and no TLS by default; the `database-network` is marked `internal: true`, so MongoDB is unreachable from outside the Compose project.  Several opt-in hardening mechanisms are available, all configured in `.env`:
 
@@ -319,7 +496,7 @@ The bundled MongoDB ships with no authentication and no TLS by default; the `dat
 
 See the [MongoDB security guide](doc/mongodb_security.md) for step-by-step setup, certificate generation, verification, and troubleshooting.
 
-## FIPS Deployment
+### FIPS Deployment
 
 For FIPS 140-2 environments, the `docker-compose.fips.yml` overlay swaps the bundled images to their FIPS variants — Percona Server for MongoDB, and `-fips`-tagged frontend, backend, and xgt images:
 
@@ -329,7 +506,7 @@ docker compose -f docker-compose.yml -f docker-compose.fips.yml up -d
 
 When MongoDB TLS is enabled (see [MongoDB Security](#mongodb-security)), mongod is additionally started with `--tlsFIPSMode` to enforce FIPS-only cipher suites, and Percona's encryption at rest becomes available via `MC_MONGO_ENCRYPTION_ENABLED`.  For the xGT License Manager under FIPS, set `MC_LICENSE_MANAGER_IMAGE` to its `-fips` tag.
 
-## xGT License Manager
+### xGT License Manager
 
 By default xGT reads a single license from the file at `XGT_LICENSE_FILE`.  For deployments that need multiple licenses or live license updates without restarting xGT, the optional [`docker-compose.license-manager.yml`](docker-compose.license-manager.yml) overlay runs a dedicated license-manager service that serves licenses to xGT over port 6200.
 
@@ -353,7 +530,7 @@ To use directories elsewhere, set `MC_LICENSE_MANAGER_CONF_PATH` and `MC_LICENSE
 
 For FIPS deployments, also set `MC_LICENSE_MANAGER_IMAGE` to the `-fips` variant of the license-manager image.  The overlay composes with `docker-compose.fips.yml` cleanly — both can be passed via `-f`.
 
-## Database Maintenance
+### Database Maintenance
 
 The [`scripts/`](scripts/README.md) directory has helper scripts for operating the bundled MongoDB:
 
@@ -363,9 +540,9 @@ The [`scripts/`](scripts/README.md) directory has helper scripts for operating t
 
 See the [scripts documentation](scripts/README.md) for usage and `.env` requirements.
 
-## Database Connectivity
+### Database Connectivity
 
-Rocketgraph Mission Control supports loading data from a database.  Refer to the [ODBC documentation](doc/ODBC_README.md) for connection instructions.
+Rocketgraph Mission Control supports loading data from a database.  Refer to the [ODBC documentation](doc/odbc_configuration.md) for connection instructions.
 
 Rocketgraph comes preinstalled with PostgreSQL and MariaDB ODBC drivers.
 
@@ -376,14 +553,14 @@ Additional databases can be connected by installing the appropriate ODBC driver,
  - Snowflake
  - Generic ODBC: Databricks, DB2, MySQL
 
-## LLM Configuration
+### LLM Configuration
 
 Rocketgraph Mission Control is configured to support a set of common LLMs out of the box.
 It also has the ability to add a new LLM and modify the existing LLMs for your site via a yaml configuration file or a python configuration file.
 
 Refer to these detailed [instructions](doc/llm_site_config.md).
 
-## OIDC Authentication (Experimental)
+### OIDC Authentication (Experimental)
 
 Mission Control has experimental support for authenticating users via an
 external OpenID Connect (OIDC) identity provider such as Keycloak or

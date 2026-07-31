@@ -1,5 +1,43 @@
 # Launch Notes
 
+## 2.7.0 (7/31/2026)
+
+### New Features
+- Redesigned the Jobs page with a job detail drawer showing a result preview, query plan, and copy and rerun actions, plus bulk job cancel and result-frame cleanup with shift-click selection.
+- Added a live mode to the Jobs page that updates job status, progress, and edge throughput in real time.
+- Added job priority visibility and control: jobs now show their nice value and scheduler priority, and the priority of a queued or running job can be changed from the job detail drawer.
+- Added display of other users' active jobs on the Jobs page (status and timing only) so users can see when the server is busy, with a toggle to show only your own jobs.
+- Redesigned the query status panel on the Data Explorer page as a live monitor showing progress, durations, and edge throughput while a query runs.
+- Added the ability to open a running query job in the Data Explorer from the Jobs page to await its results.
+- Added dataset context: custom per-dataset guidance included in AI query generation, editable from the settings menu on the Data Explorer page.
+- Added live progress bars for uploads and demo data loads.
+- Added PDF export of the answer graph, including its legend.
+- Added a region-selection screenshot tool to the answer graph that copies the selected area to the clipboard as an image.
+- Added property reordering by drag-and-drop and dataset renaming to the schema editor.
+- Added buttons to clear a frame's data without deleting the frame.
+- Added editing of numeric and boolean xGT server configuration parameters to the Server Config settings for admins.
+- Added an inactivity timeout that shows an idle warning dialog and logs out idle sessions; logging out now also logs out other tabs in the same browser.
+- Added the MC_EXTERNAL_TLS setting to mark session cookies Secure when HTTPS is terminated by a proxy, load balancer, or ingress in front of Mission Control; available in the Helm chart as frontend.tls.external.
+- Added the OpenAI GPT-5.5 and GPT-5.6 models and the Anthropic Claude Sonnet 5, Opus 5, and Fable 5 models.
+
+### Changed
+- Moved settings into a dialog with unified sections and navigation icons that opens from any page.
+- Unified the look and behavior of data tables across the application, adding sorting, per-column filters, column show/hide and resizing, and quick search.
+- Large numbers are now displayed with thousands separators throughout the interface.
+- The chat button is now labeled "Ask AI", and the term "LLM" is now "AI Model" throughout the interface.
+- Improved keyboard and screen-reader accessibility across tables, menus, and dialogs.
+- Removed OpenAI and Anthropic models retiring in August 2026 and disabled older models superseded by the new defaults.
+- The Helm chart now uses the ODBC driver registrations built into the backend image; FIPS deployments pinning a backend image older than 2.7.0 should keep the matching older chart.
+
+### Fixed
+- Fixed the answer graph showing the wrong nodes and edges when a frame referenced by the results had been dropped and recreated or had rows deleted; such results are now reported as stale instead.
+- Fixed uploads resolving to the wrong frame for graph datasets.
+- Fixed AI model request failures, such as timeouts and connection errors, being treated as successful empty results instead of being shown as errors.
+- Fixed session cookies missing the Secure attribute when Mission Control is served over HTTPS on Kubernetes; cookie security is now detected per request from the frontend proxy.
+- Fixed the preinstalled PostgreSQL and MariaDB ODBC drivers failing with driver-not-found errors in FIPS deployments.
+- Fixed saving a profile containing masked database-connector credentials overwriting the stored password with the mask; a connection string edited while still masked is now rejected with an error.
+- Fixed the backend's library search path including the application directory under Docker Compose and Podman when no custom ODBC library path was set.
+
 ## 2.6.1 (6/17/2026)
 
 ### New Features

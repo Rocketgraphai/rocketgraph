@@ -2,6 +2,8 @@
 
 This document describes each container in the Rocketgraph stack — images, ports, volumes, and environment variables — for use with any container orchestration platform.
 
+> **Scope.**  This reference is for writing custom manifests, adapting the stack to another orchestrator, or debugging a running container against its expected configuration.  If you are deploying with Docker Compose or Podman, start with the [main README](../README.md); on Kubernetes or OpenShift, start with the [Helm chart documentation](../charts/rocketgraph/README.md).
+
 ---
 
 ## Containers
@@ -12,6 +14,8 @@ This document describes each container in the Rocketgraph stack — images, port
 |---|---|
 | **Image** | `docker.io/rocketgraph/mission-control-frontend:<version>` |
 | **Ports** | `80` (HTTP), `443` (HTTPS) |
+
+These are the ports the frontend listens on inside the container.  Publishing them on the privileged host ports 80 and 443 requires a container engine running with privilege — a rootless engine cannot.  See [Running Under Podman](../README.md#running-under-podman) for the unprivileged host-port setup and the ways to map 80 and 443 onto it.
 
 **Volume mounts**
 
@@ -41,8 +45,10 @@ This document describes each container in the Rocketgraph stack — images, port
 | `MC_DEFAULT_XGT_PORT` | Yes | Port of the xGT server (default `4367`) |
 | `MC_PORT` | No | Frontend HTTP port, used to construct OIDC redirect URIs (default `80`) |
 | `MC_SSL_PORT` | No | Frontend HTTPS port, used to construct OIDC redirect URIs (default `443`) |
-| `MC_SESSION_TTL` | No | Session time-to-live in seconds |
-| `MC_SSL_PUBLIC_CERT` | No | Path to xGT server CA cert for TLS verification |
+| `MC_SESSION_TTL` | No | Session time-to-live in seconds (idle users are warned, then logged out) |
+| `MC_EXTERNAL_TLS` | No | Set to `true` when users reach Mission Control over HTTPS terminated upstream of the frontend (load balancer, ingress, edge route); marks session cookies `Secure`. Unnecessary when the bundled frontend serves HTTPS itself — the backend detects that per request via the `X-Forwarded-Proto` header the frontend sends |
+| `MC_SSL_PUBLIC_CERT` | No | Legacy HTTPS signal superseded by `MC_EXTERNAL_TLS`: when both this and `MC_SSL_PRIVATE_KEY` are non-empty (the values are never read), session cookies are marked `Secure` on every response |
+| `MC_SSL_PRIVATE_KEY` | No | See `MC_SSL_PUBLIC_CERT` |
 | `MC_SSL_PROXY_PUBLIC_CERT` | No | Path to proxy client cert for mTLS to xGT |
 | `MC_SSL_PROXY_PRIVATE_KEY` | No | Path to proxy client key for mTLS to xGT |
 | `MC_OIDC_ISSUER` | No | OIDC issuer URL |
@@ -61,13 +67,14 @@ This document describes each container in the Rocketgraph stack — images, port
 
 | Mount path | Purpose |
 |---|---|
-| `/etc/ssl/certs/xgt-server.pem` | xGT server CA cert (set `MC_SSL_PUBLIC_CERT` to this path) |
+| `/etc/ssl/certs/xgt-server.pem` | xGT server CA cert for verifying TLS to xGT (fixed path — the backend uses it whenever the file is present) |
 | `/etc/ssl/certs/proxy-client-cert.pem` | mTLS proxy client cert |
 | `/etc/ssl/private/proxy-client-key.pem` | mTLS proxy client key |
 | `/etc/ssl/certs/oidc-ca.pem` | OIDC provider CA cert (set `MC_OIDC_CA_CERT` to this path) |
 | `/etc/ssl/certs/mongodb-ca.pem` | MongoDB CA cert, to verify the server when MongoDB TLS is on |
 | `/etc/ssl/certs/mongodb-client.pem` | MongoDB client cert+key, presented under mTLS |
 | `/odbc` | ODBC drivers directory |
+| `/opt/ibm/iaccess` | IBM i Access Client Solutions install, for IBM i / Db2 ODBC (optional) |
 | `/app/site_config/site_config.yml` | Custom site config YAML (optional) |
 | `/app/site_config/site_config.py` | Custom site config Python (optional) |
 

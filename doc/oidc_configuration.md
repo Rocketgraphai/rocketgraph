@@ -7,6 +7,12 @@ This guide explains how to configure Mission Control to authenticate users via
 an external OpenID Connect (OIDC) identity provider such as Keycloak or
 OpenShift.
 
+> **Applies to all deployments.**  The `MC_OIDC_*` variables below are set in
+> `.env` for Docker Compose and Podman installs, and under `backend.env.*` (or the
+> typed `backend.oidc.*` values) for Kubernetes and OpenShift — see
+> [OIDC Authentication](../charts/rocketgraph/README.md#oidc-authentication) in the
+> Helm chart documentation for the chart-side values and Secret wiring.
+
 ## Overview
 
 When OIDC is enabled, Mission Control performs the OAuth 2.0 authorization code

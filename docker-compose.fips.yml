@@ -8,8 +8,8 @@
 # Usage:
 #   docker compose -f docker-compose.yml -f docker-compose.fips.yml up -d
 #
-# With the license-manager overlay, set the FIPS image in .env too —
-# the -fips variant of the license-manager tag (see env.template).
+# With the license-manager overlay, also set MC_LICENSE_MANAGER_IMAGE in
+# .env to the -fips variant of the license-manager tag.
 
 name: ${COMPOSE_PROJECT_NAME:-rocketgraph}
 

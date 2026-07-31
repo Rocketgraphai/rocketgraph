@@ -49,6 +49,7 @@ frontend:
     privateKey: ""
     certChain: ""       # Inline CA chain PEM for validating browser client certs
     mtls: false         # Enable browser mTLS; mounts chain.pem from existingSecret or certChain
+    external: false     # TLS terminated upstream (Ingress TLS / edge route); marks session cookies Secure
 
 backend:
   image:
@@ -145,7 +146,10 @@ backend:
 mongodb:
   # Set to false to skip deploying MongoDB and use an external database instead
   enabled: true
-  externalUri: ""           # e.g. mongodb://user:pass@external-host:27017/dbname
+  # The application keeps its data in its own database ("MissionControl") on
+  # the server; a path component in the URI sets the authentication database,
+  # not the application database.
+  externalUri: ""           # e.g. mongodb://user:pass@external-host:27017/?authSource=admin
   externalUriSecret: ""     # Secret name with key 'mongodb-uri' (preferred over externalUri)
   image:
     repository: docker.io/library/mongo

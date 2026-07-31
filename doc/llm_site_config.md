@@ -4,47 +4,11 @@ This guide explains how to customize your LLM configuration. For most use cases,
 the YAML-based `site_config.yml` is sufficient. For advanced scenarios requiring
 custom API logic, you can use a Python-based `site_config.py` instead.
 
-## Table of Contents
-
-- [Overview](#overview)
-- [Quick Start Examples](#quick-start-examples)
-  - [Select Which Models to Enable](#select-which-models-to-enable)
-  - [Enable or Disable Individual Models](#enable-or-disable-individual-models)
-  - [Add a New OpenAI Model](#add-a-new-openai-model)
-  - [Add a Local Ollama Model](#add-a-local-ollama-model)
-  - [Connect to a Custom OpenAI-Compatible API](#connect-to-a-custom-openai-compatible-api)
-  - [Change Global Defaults](#change-global-defaults)
-  - [Override Model-Specific Settings](#override-model-specific-settings)
-- [Common Use Cases](#common-use-cases)
-  - [Enterprise Deployment with Internal API](#enterprise-deployment-with-internal-api)
-  - [Multiple Ollama Models](#multiple-ollama-models)
-  - [Using Docker with Ollama](#using-docker-with-ollama)
-- [Default Models](#default-models)
-  - [OpenAI Models](#openai-models)
-  - [Anthropic Models](#anthropic-models)
-- [Available Templates](#available-templates)
-- [Available Credential Types (Built-in)](#available-credential-types-built-in)
-- [Configuration Reference](#configuration-reference)
-  - [Top-Level Structure](#top-level-structure)
-  - [Enabled Models List](#enabled-models-list)
-  - [Credentials Configuration](#credentials-configuration)
-  - [Global Defaults](#global-defaults)
-  - [Provider Configuration](#provider-configuration)
-  - [Model Configuration](#model-configuration)
-  - [Templates (Advanced)](#templates-advanced)
-  - [Authentication Types (Advanced)](#authentication-types-advanced)
-- [Troubleshooting](#troubleshooting)
-- [File Location](#file-location)
-- [Advanced: Python Configuration](#advanced-python-configuration)
-  - [When to Use Python Configuration](#when-to-use-python-configuration)
-  - [Setup](#setup-1)
-  - [Writing a Callback Function](#writing-a-callback-function)
-  - [Defining the Model in YAML](#defining-the-model-in-yaml)
-  - [Complete Example](#complete-example)
-
 ## Overview
 
 Rocketgraph Mission Control comes with a default configuration (`config.yml`) that defines available LLM providers, models, and credentials. You can customize this configuration without modifying the default file by creating a `site_config.yml` file.
+
+> **Applies to all deployments.**  The setup steps below are for Docker Compose and Podman.  On Kubernetes and OpenShift, pass the same file to the chart with `--set-file backend.siteConfig.yml=./site_config.yml` instead of setting `MC_SITE_CONFIG_YML` — see [Site Configuration](../charts/rocketgraph/README.md#site-configuration) in the Helm chart documentation.  Everything else in this guide — the schema, the model and template reference, and the Python callback API — is identical on every platform.
 
 ### Setup
 
@@ -69,8 +33,8 @@ list. This is a whitelist - only models in this list will be enabled:
 ```yaml
 llms:
   enabled_models:
-    - openai_gpt_5_4
-    - anthropic_claude_sonnet_4_6
+    - openai_gpt_5_6_sol
+    - anthropic_claude_sonnet_5
 ```
 
 This is simpler than setting `enabled: true/false` on individual models and is
@@ -97,7 +61,7 @@ llms:
   providers:
     anthropic:
       models:
-        anthropic_claude_opus_4_6:
+        anthropic_claude_opus_5:
           enabled: false
 ```
 
@@ -190,7 +154,7 @@ llms:
   providers:
     anthropic:
       models:
-        anthropic_claude_opus_4_6:
+        anthropic_claude_opus_5:
           temperature: 0.2
           max_tokens: 16384
           timeout: 180
@@ -288,28 +252,36 @@ enabled are available immediately once credentials are configured.
 
 | Model Name | Display Name | API Model ID | Enabled | Description |
 |------------|--------------|--------------|---------|-------------|
-| `openai_gpt_5_4` | GPT-5.4 | gpt-5.4 | Yes | OpenAI's most capable model. Best for multi-step problems and detailed analysis. |
-| `openai_gpt_5_4_mini` | GPT-5.4 Mini | gpt-5.4-mini | Yes | Smaller, faster GPT-5.4 variant. Good balance of capability and speed for everyday tasks. |
-| `openai_gpt_5_4_nano` | GPT-5.4 Nano | gpt-5.4-nano | No | Smallest GPT-5.4 variant. Most cost-effective option for simpler tasks where speed matters. |
-| `openai_gpt_5_3_chat` | GPT-5.3 Chat | gpt-5.3-chat-latest | Yes | Fast GPT-5.3 chat variant optimized for quick, conversational responses. |
-| `openai_gpt_5_2` | GPT-5.2 | gpt-5.2 | No | Previous generation GPT-5.2 model. Still highly capable for complex reasoning tasks. |
-| `openai_gpt_5_2_chat` | GPT-5.2 Chat | gpt-5.2-chat-latest | No | Previous generation GPT-5.2 chat variant optimized for quick responses. |
-| `openai_o3` | o3 | o3 | No | OpenAI's advanced reasoning model using chain-of-thought. Excels at math, science, and coding problems. |
+| `openai_gpt_5_6_sol` | GPT-5.6 Sol | gpt-5.6-sol | Yes | Flagship GPT-5.6 reasoning tier. Best for multi-step problems and detailed analysis. |
+| `openai_gpt_5_6_terra` | GPT-5.6 Terra | gpt-5.6-terra | Yes | Mid-size GPT-5.6 tier. Good balance of capability and speed for everyday tasks. |
+| `openai_gpt_5_6_luna` | GPT-5.6 Luna | gpt-5.6-luna | Yes | Smallest GPT-5.6 tier. Most cost-effective option for simpler tasks where speed matters. |
+| `openai_gpt_5_5` | GPT-5.5 | gpt-5.5 | No | Previous-generation flagship model. Still highly capable for complex reasoning tasks. |
+| `openai_gpt_5_5_pro` | GPT-5.5 Pro | gpt-5.5-pro | No | Extended-reasoning GPT-5.5 variant served through OpenAI's Responses API. Slower; uses an extended timeout. |
+| `openai_gpt_5_4` | GPT-5.4 | gpt-5.4 | No | Previous generation GPT-5.4 model. |
+| `openai_gpt_5_4_pro` | GPT-5.4 Pro | gpt-5.4-pro | No | Extended-reasoning GPT-5.4 variant served through OpenAI's Responses API. Slower; uses an extended timeout. |
+| `openai_gpt_5_4_mini` | GPT-5.4 Mini | gpt-5.4-mini | No | Smaller, faster GPT-5.4 variant. |
+| `openai_gpt_5_4_nano` | GPT-5.4 Nano | gpt-5.4-nano | No | Smallest GPT-5.4 variant. |
+| `openai_gpt_5_2` | GPT-5.2 | gpt-5.2 | No | Older GPT-5.2 model. |
+| `openai_o3` | o3 | o3 | No | Reasoning model using chain-of-thought. Strong at math, science, and coding problems. |
 | `openai_o3_mini` | o3 Mini | o3-mini | No | Smaller o3 reasoning model. Faster and cheaper while retaining strong reasoning capabilities. |
-| `openai_gpt_4_1` | GPT-4.1 | gpt-4.1 | No | Updated GPT-4 with improved instruction following and coding abilities. Reliable general-purpose model. |
-| `openai_gpt_4o` | GPT-4o | gpt-4o | No | Multimodal GPT-4 model capable of processing text and images. Faster and more efficient than earlier GPT-4 versions. |
-| `openai_gpt_4o_mini` | GPT-4o Mini | gpt-4o-mini | No | Smaller, faster, and more cost-effective GPT-4o variant. Good for simpler tasks where speed matters. |
+| `openai_gpt_4_1` | GPT-4.1 | gpt-4.1 | No | Older general-purpose GPT-4 generation model. |
+| `openai_gpt_4o` | GPT-4o | gpt-4o | No | Multimodal GPT-4 model capable of processing text and images. |
+| `openai_gpt_4o_mini` | GPT-4o Mini | gpt-4o-mini | No | Smaller, faster, and more cost-effective GPT-4o variant. |
 
 ### Anthropic Models
 
 | Model Name | Display Name | API Model ID | Enabled | Description |
 |------------|--------------|--------------|---------|-------------|
-| `anthropic_claude_opus_4_6` | Claude Opus 4.6 | claude-opus-4-6 | Yes | Anthropic's most capable model. Excels at complex analysis, nuanced writing, and difficult reasoning tasks. |
-| `anthropic_claude_sonnet_4_6` | Claude Sonnet 4.6 | claude-sonnet-4-6 | Yes | Balanced performance and speed. Excellent for most tasks including coding, analysis, and content generation. |
+| `anthropic_claude_fable_5` | Claude Fable 5 | claude-fable-5 | No | Anthropic's Mythos-tier model, above Opus in capability. Disabled by default: priced above the Opus tier and requires 30-day data retention on the organization. |
+| `anthropic_claude_opus_5` | Claude Opus 5 | claude-opus-5 | Yes | Anthropic's most capable generally available model. Excels at complex analysis, nuanced writing, and difficult reasoning tasks. |
+| `anthropic_claude_opus_4_8` | Claude Opus 4.8 | claude-opus-4-8 | No | Previous Opus generation. Still highly capable for complex tasks. |
+| `anthropic_claude_opus_4_7` | Claude Opus 4.7 | claude-opus-4-7 | No | Earlier Opus release. |
+| `anthropic_claude_opus_4_6` | Claude Opus 4.6 | claude-opus-4-6 | No | Earlier Opus release. |
+| `anthropic_claude_opus_4_5` | Claude Opus 4.5 | claude-opus-4-5-20251101 | No | Earlier Opus release. |
+| `anthropic_claude_sonnet_5` | Claude Sonnet 5 | claude-sonnet-5 | Yes | Balanced performance and speed. Excellent for most tasks including coding, analysis, and content generation. |
+| `anthropic_claude_sonnet_4_6` | Claude Sonnet 4.6 | claude-sonnet-4-6 | No | Previous Sonnet generation. Good general-purpose model with balanced capabilities. |
+| `anthropic_claude_sonnet_4_5` | Claude Sonnet 4.5 | claude-sonnet-4-5-20250929 | No | Earlier Sonnet release. |
 | `anthropic_claude_haiku_4_5` | Claude Haiku 4.5 | claude-haiku-4-5-20251001 | Yes | Fast and efficient for straightforward tasks. Best for high-volume, lower-complexity workloads. |
-| `anthropic_claude_opus_4_5` | Claude Opus 4.5 | claude-opus-4-5-20251101 | No | Previous Opus generation. Still highly capable for complex tasks. |
-| `anthropic_claude_sonnet_4_5` | Claude Sonnet 4.5 | claude-sonnet-4-5-20250929 | No | Previous Sonnet generation. Good general-purpose model with balanced capabilities. |
-| `anthropic_claude_opus_4_1` | Claude Opus 4.1 | claude-opus-4-1-20250805 | No | Earlier Opus release. Strong reasoning and analysis capabilities. |
 
 ## Available Templates
 
@@ -318,6 +290,7 @@ The following templates are available for use with the `template` field:
 | Template | Description | Use Case |
 |----------|-------------|----------|
 | `openai_compatible` | OpenAI chat completions API format | OpenAI, Azure OpenAI, and compatible services |
+| `openai_responses` | OpenAI Responses API format (`/v1/responses`) | Responses-only OpenAI models such as GPT-5.5 Pro and GPT-5.4 Pro |
 | `anthropic_messages` | Anthropic Messages API format | Anthropic Claude models |
 | `ollama_chat` | Ollama chat API format | Local Ollama instances |
 | `huggingface_tgi` | Hugging Face Text Generation Inference | HuggingFace TGI deployments |
@@ -365,9 +338,9 @@ enabled, regardless of their individual `enabled` property.
 ```yaml
 llms:
   enabled_models:
-    - openai_gpt_5_4
-    - openai_gpt_5_4_mini
-    - anthropic_claude_sonnet_4_6
+    - openai_gpt_5_6_sol
+    - openai_gpt_5_6_terra
+    - anthropic_claude_sonnet_5
     - anthropic_claude_haiku_4_5
 ```
 
@@ -515,6 +488,11 @@ llms:
             fixed_value: 1.0
 ```
 
+**Response Parser Types:**
+- `json_path` - Extract the response text at a fixed JSON path given by `text_path`
+- `openai_responses` - Walk the Responses API `output` array, skipping reasoning items, to find the message text
+- `anthropic_messages` - Concatenate the text blocks of the Messages API `content` array, skipping thinking blocks
+
 **Template Variables:**
 - `{model}` - The model ID
 - `{messages}` - Chat messages array
@@ -566,9 +544,7 @@ llms:
 
 ## File Location
 
-Create your `site_config.yml` file anywhere on your host machine, then set the
-`MC_SITE_CONFIG_YML` environment variable to point to it. The Docker Compose
-configuration will mount it into the container automatically.
+Create your `site_config.yml` file anywhere on your host machine, then set the `MC_SITE_CONFIG_YML` environment variable to point to it. The Docker Compose or Podman configuration will mount it into the container automatically. On Kubernetes and OpenShift the chart carries the file's contents instead — pass it with `--set-file backend.siteConfig.yml=./site_config.yml` and skip the environment variable.
 
 Example:
 

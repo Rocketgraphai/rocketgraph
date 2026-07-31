@@ -76,55 +76,6 @@ spec:
           protocol: TCP
 
 ---
-# Source: rocketgraph/templates/backend-odbc-configmap.yaml
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: test-release-backend-odbc-config
-  labels:
-    app: backend
-    helm.sh/chart: rocketgraph-0.2.0
-    app.kubernetes.io/name: rocketgraph
-    app.kubernetes.io/version: "2.6.1"
-    app.kubernetes.io/managed-by: Helm
-    app.kubernetes.io/instance: test-release
-data:
-  odbcinst.ini: |
-    [MariaDB Unicode]
-    Driver=libmaodbc.so
-    Description=MariaDB Connector/ODBC(Unicode)
-    Threading=0
-    UsageCount=1
-
-    [SQLite]
-    Description=SQLite ODBC Driver
-    Driver=libsqliteodbc.so
-    Setup=libsqliteodbc.so
-    UsageCount=1
-
-    [SQLite3]
-    Description=SQLite3 ODBC Driver
-    Driver=libsqlite3odbc.so
-    Setup=libsqlite3odbc.so
-    UsageCount=1
-
-    [PostgreSQL ANSI]
-    Description=PostgreSQL ODBC driver (ANSI version)
-    Driver=psqlodbca.so
-    Setup=libodbcpsqlS.so
-    Debug=0
-    CommLog=1
-    UsageCount=1
-
-    [PostgreSQL Unicode]
-    Description=PostgreSQL ODBC driver (Unicode version)
-    Driver=psqlodbcw.so
-    Setup=libodbcpsqlS.so
-    Debug=0
-    CommLog=1
-    UsageCount=1
-
----
 # Source: rocketgraph/templates/xgt-configmap.yaml
 apiVersion: v1
 kind: ConfigMap
@@ -317,8 +268,6 @@ spec:
       labels:
         app: backend
         app.kubernetes.io/instance: test-release
-      annotations:
-        checksum/odbc-config: ee82fd678535bd20c7ac7658e79435391579277d88c1b2ec8f5563abc53da676
     spec:
       containers:
         - name: backend
@@ -372,14 +321,7 @@ spec:
             periodSeconds: 60
             timeoutSeconds: 5
             failureThreshold: 5
-          volumeMounts:
-            - name: odbc-config
-              mountPath: /odbc
       restartPolicy: Always
-      volumes:
-        - name: odbc-config
-          configMap:
-            name: test-release-backend-odbc-config
 
 ---
 # Source: rocketgraph/templates/frontend-deployment.yaml
@@ -468,7 +410,7 @@ spec:
         app: xgt
         app.kubernetes.io/instance: test-release
       annotations:
-        checksum/config: 356a66cf626c90f7e18179fdbbc1d8bc71677a591a9f02527aeebef0705a7be1
+        checksum/config: eaee42976fc1300d3710436248829ddad87b74c689aa37a3f4a07d43d834bf42
     spec:
       containers:
         - name: xgt

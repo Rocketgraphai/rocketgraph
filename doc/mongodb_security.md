@@ -1,6 +1,8 @@
 # MongoDB Security
 
-This guide shows how to harden the bundled MongoDB for a Docker Compose deployment of Rocketgraph Mission Control: authentication, TLS, mutual TLS, and encryption at rest.  Each is opt-in via environment variables in your `.env` file; the base `docker-compose.yml` reads them and wires the credentials, certificate mounts, and connection string automatically.
+This guide shows how to harden the bundled MongoDB for Rocketgraph Mission Control: authentication, TLS, mutual TLS, and encryption at rest.  Each is opt-in.
+
+> **Applies to all deployments.**  The examples below use Docker Compose and Podman — each feature is opt-in via environment variables in your `.env` file, which the base `docker-compose.yml` reads to wire the credentials, certificate mounts, and connection string automatically.  On Kubernetes and OpenShift the same four features are configured through chart values and Secrets instead; see [With MongoDB Authentication](../charts/rocketgraph/README.md#with-mongodb-authentication), [MongoDB TLS](../charts/rocketgraph/README.md#mongodb-tls), and [MongoDB Encryption at Rest](../charts/rocketgraph/README.md#mongodb-encryption-at-rest) in the Helm chart documentation.  The enforcement rules, certificate requirements, upgrade path, and troubleshooting in this guide apply to every platform.
 
 ## Environment Variables
 

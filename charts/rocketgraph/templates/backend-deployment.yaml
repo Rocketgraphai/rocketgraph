@@ -16,10 +16,8 @@ spec:
       labels:
         app: backend
         app.kubernetes.io/instance: {{ .Release.Name }}
+      {{- if or .Values.backend.siteConfig.yml .Values.backend.siteConfig.py .Values.backend.oidc.clientSecret .Values.backend.oidc.caCert .Values.backend.oidc.caCertExistingSecret .Values.backend.podAnnotations }}
       annotations:
-        {{- if not .Values.backend.odbc.enabled }}
-        checksum/odbc-config: {{ include (print $.Template.BasePath "/backend-odbc-configmap.yaml") . | sha256sum }}
-        {{- end }}
         {{- if or .Values.backend.siteConfig.yml .Values.backend.siteConfig.py }}
         checksum/site-config: {{ include (print $.Template.BasePath "/backend-site-configmap.yaml") . | sha256sum }}
         {{- end }}
@@ -32,6 +30,7 @@ spec:
         {{- with .Values.backend.podAnnotations }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
+      {{- end }}
     spec:
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
@@ -90,9 +89,12 @@ spec:
               value: {{ .Values.mongodb.externalUri | quote }}
             {{- end }}
             {{- end }}
-            {{- if or .Values.backend.tls.existingSecret .Values.backend.tls.xgtServerCert }}
-            - name: MC_SSL_PUBLIC_CERT
-              value: "/etc/ssl/certs/xgt-server.pem"
+            {{- if .Values.frontend.tls.external }}
+            {{- /* Marks session cookies Secure.  Only needed for upstream TLS
+                   termination — in-pod frontend TLS is detected per request
+                   via X-Forwarded-Proto. */}}
+            - name: MC_EXTERNAL_TLS
+              value: "true"
             {{- end }}
             {{- if .Values.backend.tls.mtls }}
             - name: MC_SSL_PROXY_PUBLIC_CERT
@@ -182,6 +184,12 @@ spec:
           resources:
             {{- toYaml . | nindent 12 }}
           {{- end }}
+          {{- /* Every mount is conditional, so emit the key only when at
+               least one condition holds — a bare "volumeMounts:" renders
+               null and fails strict schema validation. Keep this condition
+               the union of the entry conditions below. */}}
+          {{- $hasMounts := or .Values.backend.tls.existingSecret .Values.backend.tls.xgtServerCert .Values.backend.tls.mtls .Values.backend.odbc.enabled .Values.backend.iaccess.enabled .Values.backend.siteConfig.yml .Values.backend.siteConfig.py .Values.backend.oidc.caCert .Values.backend.oidc.caCertExistingSecret (and .Values.mongodb.tls.enabled (or .Values.mongodb.tls.caCert .Values.mongodb.tls.existingSecret)) }}
+          {{- if $hasMounts }}
           volumeMounts:
             {{- if or .Values.backend.tls.existingSecret .Values.backend.tls.xgtServerCert }}
             - name: tls-certs
@@ -199,11 +207,11 @@ spec:
               subPath: proxy-client-key.pem
               readOnly: true
             {{- end }}
+            {{- /* When odbc is disabled nothing mounts at /odbc: the image
+                 entrypoint then falls back to its bundled driver
+                 registrations at /odbc_default, same as Compose. */}}
             {{- if .Values.backend.odbc.enabled }}
             - name: odbc-drivers
-              mountPath: /odbc
-            {{- else }}
-            - name: odbc-config
               mountPath: /odbc
             {{- end }}
             {{- if .Values.backend.iaccess.enabled }}
@@ -240,6 +248,7 @@ spec:
               subPath: client.pem
               readOnly: true
             {{- end }}
+          {{- end }}
       {{- with .Values.backend.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
@@ -253,6 +262,10 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       restartPolicy: Always
+      {{- /* Same rationale as volumeMounts above: all entries are
+           conditional, so gate the key on the union of their conditions. */}}
+      {{- $hasVolumes := or .Values.backend.tls.existingSecret .Values.backend.tls.xgtServerCert .Values.backend.tls.proxyClientCert .Values.backend.tls.proxyClientKey .Values.backend.odbc.enabled .Values.backend.iaccess.enabled .Values.backend.siteConfig.yml .Values.backend.siteConfig.py .Values.backend.oidc.caCert .Values.backend.oidc.caCertExistingSecret (and .Values.mongodb.tls.enabled (or .Values.mongodb.tls.caCert .Values.mongodb.tls.existingSecret)) }}
+      {{- if $hasVolumes }}
       volumes:
         {{- if or .Values.backend.tls.existingSecret .Values.backend.tls.xgtServerCert .Values.backend.tls.proxyClientCert .Values.backend.tls.proxyClientKey }}
         - name: tls-certs
@@ -263,10 +276,6 @@ spec:
         - name: odbc-drivers
           persistentVolumeClaim:
             claimName: {{ .Values.backend.odbc.existingClaim | default (printf "%s-backend-odbc" .Release.Name) }}
-        {{- else }}
-        - name: odbc-config
-          configMap:
-            name: {{ include "rocketgraph.fullname.backend" . }}-odbc-config
         {{- end }}
         {{- if .Values.backend.iaccess.enabled }}
         - name: iaccess
@@ -288,3 +297,4 @@ spec:
           secret:
             secretName: {{ include "rocketgraph.mongodbTlsSecret" . }}
         {{- end }}
+      {{- end }}
