@@ -1,0 +1,22 @@
+# OS / editor artifacts.
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*~
+.#*
+\#*#
+.directory
+*.swp
+*.swo
+*.swn
+
+# Build output (regenerable).
+# A stray tarball from an earlier `helm package` would otherwise be packaged
+# into the next one.
+*.tgz
+
+# CI snapshot fixtures stay out of the tarball. They are rendered output of
+# this chart, regenerated and diffed by the helm-snapshot job, so they are a
+# test input rather than chart content that users need.
+tests/
