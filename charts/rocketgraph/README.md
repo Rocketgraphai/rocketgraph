@@ -74,7 +74,7 @@ fips:
 
 It makes the following changes:
 
-- **frontend, backend, xgt, license manager** — `-fips` is appended to the resolved image tag (e.g. `2.6.1` → `2.6.1-fips`).
+- **frontend, backend, xgt, license manager** — `-fips` is appended to the resolved image tag (e.g. `2.7.1` → `2.7.1-fips`).
 - **mongodb** — switches to `docker.io/percona/percona-server-mongodb` (configurable via `fips.mongoImage.repository`/`.tag`).
 
 `fips.enabled` only swaps the images.  Production FIPS deployments will typically also want:

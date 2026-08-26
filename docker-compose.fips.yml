@@ -18,19 +18,19 @@ services:
     extends:
       file: docker-compose.yml
       service: frontend
-    image: ${MC_FRONTEND_IMAGE:-docker.io/rocketgraph/mission-control-frontend:2.6.1-fips}
+    image: ${MC_FRONTEND_IMAGE:-docker.io/rocketgraph/mission-control-frontend:2.7.0-fips}
 
   backend:
     extends:
       file: docker-compose.yml
       service: backend
-    image: ${MC_BACKEND_IMAGE:-docker.io/rocketgraph/mission-control-backend:2.6.1-fips}
+    image: ${MC_BACKEND_IMAGE:-docker.io/rocketgraph/mission-control-backend:2.7.0-fips}
 
   xgt:
     extends:
       file: docker-compose.yml
       service: xgt
-    image: ${XGT_IMAGE:-docker.io/rocketgraph/xgt:2.6.1-fips}
+    image: ${XGT_IMAGE:-docker.io/rocketgraph/xgt:2.7.1-fips}
 
   mongodb:
     extends:

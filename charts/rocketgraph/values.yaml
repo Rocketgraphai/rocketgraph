@@ -219,7 +219,7 @@ xgt:
   enabled: true  # Set to false to use an external xGT server
   image:
     repository: docker.io/rocketgraph/xgt
-    tag: ""  # Defaults to Chart.appVersion
+    tag: "2.7.1"  # xGT versions independently of the chart's appVersion.
     pullPolicy: IfNotPresent
   replicas: 1  # Must be 1 — xgt does not support multi-instance deployments in this configuration
   resources: {}
@@ -378,7 +378,7 @@ ingress:
 fips:
   # Set to true to use FIPS-compliant image variants.
   # - frontend, backend, xgt, license manager: "-fips" is appended to the
-  #   image tag (e.g. "2.6.1-fips")
+  #   image tag (e.g. "2.7.1-fips")
   # - mongodb: switches to percona/percona-server-mongodb
   # When TLS is also enabled, mongod gets --tlsFIPSMode automatically.
   enabled: false

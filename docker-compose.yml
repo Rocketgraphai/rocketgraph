@@ -4,7 +4,7 @@ name: ${COMPOSE_PROJECT_NAME:-rocketgraph}
 
 services:
   frontend:
-    image: ${MC_FRONTEND_IMAGE:-docker.io/rocketgraph/mission-control-frontend:2.6.1}
+    image: ${MC_FRONTEND_IMAGE:-docker.io/rocketgraph/mission-control-frontend:2.7.0}
     environment:
       MC_SSL_PORT: ${MC_SSL_PORT:-443}
     ports:
@@ -28,7 +28,7 @@ services:
     restart: on-failure
 
   backend:
-    image: ${MC_BACKEND_IMAGE:-docker.io/rocketgraph/mission-control-backend:2.6.1}
+    image: ${MC_BACKEND_IMAGE:-docker.io/rocketgraph/mission-control-backend:2.7.0}
     environment:
       # The backend builds the bundled MongoDB URI from these vars (auth,
       # TLS, mTLS) in build_mongo_uri() — not via compose ${...:+...}, which
@@ -88,7 +88,7 @@ services:
       start_period: 15s
 
   xgt:
-    image: ${XGT_IMAGE:-docker.io/rocketgraph/xgt:2.6.1}
+    image: ${XGT_IMAGE:-docker.io/rocketgraph/xgt:2.7.1}
     ports:
       - "${XGT_PORT:-4367}:4367"
     volumes:
