@@ -1,4 +1,7 @@
 {{- if .Values.xgt.enabled }}
+{{- $restricted := and .Values.openshift.enabled (eq .Values.openshift.scc "restricted-v2") }}
+{{- $files := .Values.xgt.files.existingClaim }}
+{{- $direct := or $restricted $files }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -20,7 +23,9 @@ spec:
         app: xgt
         app.kubernetes.io/instance: {{ .Release.Name }}
       annotations:
+        {{- if not (or $files .Values.xgt.config.existingConfigMap) }}
         checksum/config: {{ include (print $.Template.BasePath "/xgt-configmap.yaml") . | sha256sum }}
+        {{- end }}
         {{- if or .Values.backend.oidc.caCert .Values.backend.oidc.caCertExistingSecret }}
         checksum/oidc-ca-secret: {{ .Values.backend.oidc.caCert | default .Values.backend.oidc.caCertExistingSecret | sha256sum }}
         {{- end }}
@@ -28,6 +33,9 @@ spec:
         {{- toYaml . | nindent 8 }}
         {{- end }}
     spec:
+      {{- with .Values.xgt.hostname }}
+      hostname: {{ . | quote }}
+      {{- end }}
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
@@ -35,7 +43,7 @@ spec:
       {{- if .Values.openshift.enabled }}
       serviceAccountName: {{ include "rocketgraph.fullname.serviceaccount" . }}
       {{- end }}
-      {{- with .Values.xgt.podSecurityContext }}
+      {{- with (include "rocketgraph.podSecurityContext" (dict "root" . "context" .Values.xgt.podSecurityContext) | fromYaml) }}
       securityContext:
         {{- toYaml . | nindent 8 }}
       {{- end }}
@@ -57,8 +65,33 @@ spec:
         - name: xgt
           image: "{{ .Values.xgt.image.repository }}:{{ coalesce .Values.xgt.image.tag .Chart.AppVersion }}{{ include "rocketgraph.fipsSuffix" . }}"
           imagePullPolicy: {{ .Values.xgt.image.pullPolicy }}
-          {{- with .Values.xgt.containerSecurityContext }}
+          {{- with (include "rocketgraph.containerSecurityContext" (dict "root" . "context" .Values.xgt.containerSecurityContext) | fromYaml) }}
           securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- if .Values.xgt.command }}
+          command: {{ .Values.xgt.command | toJson }}
+          {{- with .Values.xgt.args }}
+          args: {{ . | toJson }}
+          {{- end }}
+          {{- else if $direct }}
+          command: ["/opt/xgtd/bin/xgtd"]
+          args:
+            - -c
+            - /conf/xgtd.conf
+            - -Dsystem.hostname=0.0.0.0
+            - -Dsystem.io_directory=/data
+            - -Dsystem.io_follow_symbolic_links=true
+            - {{ printf "-Dsystem.port=%v" .Values.xgt.port | quote }}
+            - {{ printf "-Dsystem.health_port=%v" .Values.xgt.healthCheck.port | quote }}
+            {{- with .Values.xgt.args }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          {{- else if .Values.xgt.args }}
+          args: {{ .Values.xgt.args | toJson }}
+          {{- end }}
+          {{- with .Values.xgt.env }}
+          env:
             {{- toYaml . | nindent 12 }}
           {{- end }}
           ports:
@@ -88,6 +121,25 @@ spec:
             {{- toYaml . | nindent 12 }}
           {{- end }}
           volumeMounts:
+            {{- if $files }}
+            {{- range $dir := list "conf" "license" "data" "log" }}
+            {{- $claim := "" }}
+            {{- if has $dir (list "data" "log") }}
+            {{- $claim = (index $.Values.xgt.persistence $dir).existingClaim }}
+            {{- end }}
+            {{- if $claim }}
+            - name: xgt-{{ $dir }}
+              mountPath: /{{ $dir }}
+            {{- else }}
+            - name: xgt-files
+              mountPath: /{{ $dir }}
+              subPath: {{ join "/" (compact (list $.Values.xgt.files.subPath $dir)) | quote }}
+              {{- if has $dir (list "conf" "license") }}
+              readOnly: true
+              {{- end }}
+            {{- end }}
+            {{- end }}
+            {{- else }}
             - name: xgt-config
               mountPath: /conf/xgtd.conf
               subPath: xgtd.conf
@@ -125,11 +177,15 @@ spec:
               mountPath: /etc/sssd-config
               readOnly: true
             {{- end }}
+            {{- end }}
             {{- if or .Values.backend.oidc.caCert .Values.backend.oidc.caCertExistingSecret }}
             - name: oidc-ca-cert
               mountPath: /etc/ssl/certs/oidc-ca.pem
               subPath: oidc-ca.pem
               readOnly: true
+            {{- end }}
+            {{- with .Values.xgt.extraVolumeMounts }}
+            {{- toYaml . | nindent 12 }}
             {{- end }}
       {{- with .Values.xgt.nodeSelector }}
       nodeSelector:
@@ -145,9 +201,21 @@ spec:
       {{- end }}
       restartPolicy: Always
       volumes:
+        {{- if $files }}
+        - name: xgt-files
+          persistentVolumeClaim:
+            claimName: {{ $files | quote }}
+        {{- range $dir := list "data" "log" }}
+        {{- with (index $.Values.xgt.persistence $dir).existingClaim }}
+        - name: xgt-{{ $dir }}
+          persistentVolumeClaim:
+            claimName: {{ . | quote }}
+        {{- end }}
+        {{- end }}
+        {{- else }}
         - name: xgt-config
           configMap:
-            name: {{ include "rocketgraph.fullname.xgt" . }}-config
+            name: {{ .Values.xgt.config.existingConfigMap | default (printf "%s-config" (include "rocketgraph.fullname.xgt" .)) }}
         - name: xgt-data
           persistentVolumeClaim:
             claimName: {{ .Values.xgt.persistence.data.existingClaim | default (printf "%s-xgt-data" .Release.Name) }}
@@ -163,7 +231,7 @@ spec:
                 path: certs/server.cert.pem
               - key: server.key.pem
                 path: private/server.key.pem
-                mode: 0400
+                mode: {{ ternary "0440" "0400" $restricted }}
               {{- if and .Values.xgt.ssl.mtls (or .Values.xgt.ssl.caCert .Values.xgt.ssl.existingSecret) }}
               - key: ca-chain.cert.pem
                 path: certs/ca-chain.cert.pem
@@ -183,9 +251,13 @@ spec:
                 path: sssd.conf
                 mode: 0600
         {{- end }}
+        {{- end }}
         {{- if or .Values.backend.oidc.caCert .Values.backend.oidc.caCertExistingSecret }}
         - name: oidc-ca-cert
           secret:
             secretName: {{ include "rocketgraph.backendOidcCaSecret" . }}
+        {{- end }}
+        {{- with .Values.xgt.extraVolumes }}
+        {{- toYaml . | nindent 8 }}
         {{- end }}
 {{- end }}

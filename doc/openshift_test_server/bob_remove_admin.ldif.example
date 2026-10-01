@@ -1,0 +1,5 @@
+# Removes only Bob's membership, not the group or its other members.
+dn: cn=xgt-admins,ou=groups,dc=example,dc=com
+changetype: modify
+delete: member
+member: uid=bob,ou=people,dc=example,dc=com

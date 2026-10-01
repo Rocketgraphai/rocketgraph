@@ -1,0 +1,15 @@
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: mission-control
+  namespace: xgt-demo
+spec:
+  host: mc-xgt-test.apps.example.com
+  to:
+    kind: Service
+    name: rocketgraph-frontend
+  port:
+    targetPort: http
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect

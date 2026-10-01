@@ -1,4 +1,5 @@
 {{- if .Values.mongodb.enabled }}
+{{- $restricted := and .Values.openshift.enabled (eq .Values.openshift.scc "restricted-v2") }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -31,8 +32,8 @@ spec:
       {{- if .Values.openshift.enabled }}
       serviceAccountName: {{ include "rocketgraph.fullname.serviceaccount" . }}
       {{- end }}
-      {{- $podSecCtx := .Values.mongodb.podSecurityContext }}
-      {{- if and .Values.mongodb.encryption.enabled (not (hasKey (.Values.mongodb.podSecurityContext | default dict) "fsGroup")) }}
+      {{- $podSecCtx := include "rocketgraph.podSecurityContext" (dict "root" . "context" .Values.mongodb.podSecurityContext) | fromYaml }}
+      {{- if and (not $restricted) .Values.mongodb.encryption.enabled (not (hasKey (.Values.mongodb.podSecurityContext | default dict) "fsGroup")) }}
       {{- $podSecCtx = merge (dict "fsGroup" 1001) ($podSecCtx | default dict) }}
       {{- end }}
       {{- with $podSecCtx }}
@@ -45,7 +46,13 @@ spec:
           image: "{{ include "rocketgraph.mongoImage" . }}"
           imagePullPolicy: {{ .Values.mongodb.image.pullPolicy }}
           securityContext:
+            {{- if $restricted }}
+            runAsNonRoot: true
+            seccompProfile:
+              type: RuntimeDefault
+            {{- else }}
             runAsUser: {{ dig "runAsUser" 1001 (.Values.mongodb.containerSecurityContext | default dict) }}
+            {{- end }}
             allowPrivilegeEscalation: false
             capabilities:
               drop: [ALL]
@@ -87,7 +94,7 @@ spec:
             - /etc/mongodb-encryption/encryption.key
             {{- end }}
           {{- end }}
-          {{- with .Values.mongodb.containerSecurityContext }}
+          {{- with (include "rocketgraph.containerSecurityContext" (dict "root" . "context" .Values.mongodb.containerSecurityContext) | fromYaml) }}
           securityContext:
             {{- toYaml . | nindent 12 }}
           {{- end }}

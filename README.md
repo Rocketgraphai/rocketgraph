@@ -53,11 +53,13 @@ The guides below cover individual topics in depth.  The first four apply to ever
 | Guide | What it covers |
 |---|---|
 | [MongoDB Security](doc/mongodb_security.md) | Authentication, TLS, mutual TLS, and encryption at rest for the bundled MongoDB |
-| [OIDC Authentication](doc/oidc_configuration.md) | Signing users in through an external identity provider such as Keycloak or OpenShift |
+| [OIDC and OpenShift OAuth2 Authentication](doc/oidc_configuration.md) | Keycloak OIDC and OpenShift OAuth2 login, client secrets, scopes and token validation |
 | [Site LLM Configuration](doc/llm_site_config.md) | Which AI models Mission Control offers, their endpoints, and their credentials |
 | [ODBC Configuration](doc/odbc_configuration.md) | Loading data from external databases — PostgreSQL, MariaDB, and IBM i (AS/400) |
 | [Deployment Reference](doc/deployment_reference.md) | Per-container images, ports, volume paths, and environment variables — for orchestrators not listed above, or for debugging a running container |
 | [Helm Chart](charts/rocketgraph/README.md) | Deploying on Kubernetes and OpenShift, and every value the chart accepts |
+| [OpenShift Test Server](doc/openshift_test_server/README.md) | Step-by-step LDAP/OAuth setup, group synchronization, FIPS images, automation tokens, and three XGT servers sharing Mission Control |
+| [OpenShift FIPS Deployment Planning](doc/openshift_fips_deployment.md) | Administrator responsibilities, required inputs, and deployment acceptance checks |
 
 ## Compose Files and Images
 
@@ -256,10 +258,10 @@ The configurable environment variables are:
 
 |Variable                |Volume Mapped|Description|
 |------------------------|-|-----------|
-|MC_OIDC_ISSUER          | |*(experimental)* OIDC issuer URL; if empty, discovered from the xGT server|
+|MC_OIDC_ISSUER          | |*(experimental)* OIDC provider or OpenShift OAuth issuer URL; if empty, discovered from XGT|
 |MC_OIDC_CLIENT_ID       | |*(experimental)* OAuth2 client ID; if empty, discovered from the xGT server|
 |MC_OIDC_CLIENT_SECRET   | |*(experimental)* client secret for confidential OAuth2 clients|
-|MC_OIDC_SCOPES          | |*(experimental)* space-separated OAuth2 scopes to request; default: `openid profile email`|
+|MC_OIDC_SCOPES          | |*(experimental)* optional scope override; discovers XGT-advertised scopes, including `user:info` for OpenShift|
 |MC_OIDC_FRONTEND_URL    | |*(experimental)* override the frontend base URL for post-login redirects; derived server-side from the request hostname and `MC_PORT`/`MC_SSL_PORT` by default|
 |MC_OIDC_REDIRECT_URI    | |*(experimental)* override the redirect URI sent to the IdP; derived server-side from the request hostname and `MC_PORT`/`MC_SSL_PORT` by default|
 |MC_OIDC_ALLOWED_ORIGINS | |*(experimental)* comma-separated list of permitted frontend origins; `*` wildcards supported (e.g. `https://*.apps.cluster.example.com`); optional defense-in-depth|
@@ -562,9 +564,10 @@ Refer to these detailed [instructions](doc/llm_site_config.md).
 
 ### OIDC Authentication (Experimental)
 
-Mission Control has experimental support for authenticating users via an
-external OpenID Connect (OIDC) identity provider such as Keycloak or
-OpenShift OAuth.
+Mission Control has experimental support for OIDC providers such as Keycloak
+and for OpenShift's built-in OAuth2 server. Both use the existing `OidcAuth`
+interface and `MC_OIDC_*` settings. For OpenShift, XGT obtains the user's identity
+and groups by validating the access token through the OpenShift User API.
 
 Refer to the [OIDC configuration guide](doc/oidc_configuration.md) for setup
 instructions.

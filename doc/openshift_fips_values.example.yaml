@@ -1,0 +1,76 @@
+# Companion to openshift_fips_deployment.md.
+# Requires chart 0.4.0 or later.
+# Review template, not a complete production deployment: supply Secrets,
+# licensed workload hostname, storage/sizing, Route, and approved TLS topology.
+# Versions match the lab image test; approve exact versions/digests for rollout.
+openshift:
+  enabled: true
+  scc: restricted-v2
+fips:
+  enabled: true
+
+xgt:
+  hostname: xgt-test-0
+  image:
+    tag: 2.7.1
+  replicas: 1
+  license:
+    existingSecret: xgt-license
+  ssl:
+    enabled: true
+    existingSecret: xgt-ssl
+  config:
+    grouplabelCsv: |
+      group,label
+      xgtd,xgtadmin
+      xgt-admins,xgtadmin
+      xgt-users,data-users
+      system:serviceaccounts:xgt-jobs,automation
+    labelCsv: |
+      label
+      xgtadmin
+      data-users
+      automation
+  extraConfig:
+    security.oidc:
+      issuer: https://oauth-openshift.apps.example.com
+      client_id: xgt-client
+      validation_mode: openshift_userapi
+      openshift_user_api_uri: https://kubernetes.default.svc/apis/user.openshift.io/v1/users/~
+      username_claim: metadata.name
+      groups_claim: groups
+      scopes: user:info
+      ca_cert: /etc/ssl/certs/oidc-ca.pem
+
+frontend:
+  image:
+    tag: 2.7.0
+  tls:
+    # Example uses HTTPS terminated at an OpenShift edge Route.
+    # Review internal HTTP hops against the deployment's security requirements.
+    external: true
+
+backend:
+  image:
+    tag: 2.7.0
+  env:
+    XGT_AUTH_TYPES: "['OidcAuth']"
+    MC_DEFAULT_XGT_PORT: '4367'
+  tls:
+    existingSecret: backend-tls
+  oidc:
+    existingSecret: xgt-oauth-client
+    caCertExistingSecret: oidc-ca
+    tlsVerify: /etc/ssl/certs/oidc-ca.pem
+    # Use this override if proxy-derived public URLs are wrong.
+    frontendUrl: https://mc.apps.example.com
+    # issuer, clientId, and scopes are discovered from XGT.
+
+mongodb:
+  auth:
+    enabled: true
+    existingSecret: mongodb-auth
+  tls:
+    enabled: true
+    mode: requireTLS
+    existingSecret: mongodb-tls

@@ -1,0 +1,12 @@
+# Copy into .private/ and fill in the secret there before applying.
+apiVersion: oauth.openshift.io/v1
+kind: OAuthClient
+metadata:
+  name: xgt-demo-client
+secret: REPLACE_WITH_CLIENT_SECRET
+grantMethod: prompt
+scopeRestrictions:
+  - literals: [user:info]
+redirectURIs:
+  - http://127.0.0.1:8765/callback
+  - https://mc-xgt-test.apps.example.com/api/login/oidc/callback

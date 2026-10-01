@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: xgt-demo
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: xgt-demo-jobs
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: xgt-demo-ldap-sync
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: xgt-automation
+  namespace: xgt-demo-jobs

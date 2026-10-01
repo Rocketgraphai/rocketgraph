@@ -1,4 +1,5 @@
 {{- if .Values.networkPolicy.enabled }}
+{{- if .Values.missionControl.enabled }}
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -15,9 +16,9 @@ spec:
     - Ingress
   ingress:
     - ports:
-        - port: 80
+        - port: {{ include "rocketgraph.frontendHttpPort" . }}
           protocol: TCP
-        - port: 443
+        - port: {{ include "rocketgraph.frontendHttpsPort" . }}
           protocol: TCP
 ---
 apiVersion: networking.k8s.io/v1
@@ -42,6 +43,7 @@ spec:
       ports:
         - port: 5000
           protocol: TCP
+{{- end }}
 {{- if .Values.xgt.enabled }}
 ---
 apiVersion: networking.k8s.io/v1

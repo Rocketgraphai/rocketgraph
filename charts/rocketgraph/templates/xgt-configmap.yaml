@@ -1,4 +1,4 @@
-{{- if .Values.xgt.enabled }}
+{{- if and .Values.xgt.enabled (not .Values.xgt.files.existingClaim) (not .Values.xgt.config.existingConfigMap) }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -57,6 +57,12 @@ data:
     {{- $proxyStr := printf "[%s]" ($proxyItems | join ",") }}
     {{- $_ := set $defaults "security.proxy_list" $proxyStr }}
     {{- end }}
-    {{- $merged := merge (.Values.xgt.extraConfig | default dict) $defaults }}
+    {{- $merged := merge (deepCopy (.Values.xgt.extraConfig | default dict)) $defaults }}
+    {{- if and (index $merged "security.oidc") (or .Values.backend.oidc.caCert .Values.backend.oidc.caCertExistingSecret) }}
+    {{- $oidc := index $merged "security.oidc" }}
+    {{- if not (hasKey $oidc "ca_cert") }}
+    {{- $_ := set $oidc "ca_cert" "/etc/ssl/certs/oidc-ca.pem" }}
+    {{- end }}
+    {{- end }}
     {{- $merged | toPrettyJson | nindent 4 }}
 {{- end }}

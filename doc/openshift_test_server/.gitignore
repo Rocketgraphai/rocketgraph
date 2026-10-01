@@ -1,0 +1,7 @@
+.private/
+.venv/
+__pycache__/
+rendered.yaml
+values.site.yaml
+ldap-sync.site.yaml
+site.yaml

@@ -1,3 +1,6 @@
+{{- if .Values.missionControl.enabled }}
+{{- $restricted := and .Values.openshift.enabled (eq .Values.openshift.scc "restricted-v2") }}
+{{- $tls := or .Values.frontend.tls.existingSecret .Values.frontend.tls.publicCert .Values.frontend.tls.privateKey }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -28,7 +31,7 @@ spec:
       {{- if .Values.openshift.enabled }}
       serviceAccountName: {{ include "rocketgraph.fullname.serviceaccount" . }}
       {{- end }}
-      {{- with .Values.frontend.podSecurityContext }}
+      {{- with (include "rocketgraph.podSecurityContext" (dict "root" . "context" .Values.frontend.podSecurityContext) | fromYaml) }}
       securityContext:
         {{- toYaml . | nindent 8 }}
       {{- end }}
@@ -36,21 +39,46 @@ spec:
         - name: frontend
           image: "{{ .Values.frontend.image.repository }}:{{ coalesce .Values.frontend.image.tag .Chart.AppVersion }}{{ include "rocketgraph.fipsSuffix" . }}"
           imagePullPolicy: {{ .Values.frontend.image.pullPolicy }}
-          {{- with .Values.frontend.containerSecurityContext }}
+          {{- with (include "rocketgraph.containerSecurityContext" (dict "root" . "context" .Values.frontend.containerSecurityContext) | fromYaml) }}
           securityContext:
             {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- if $restricted }}
+          command: ["/bin/sh", "-ec"]
+          args:
+            - |
+              /usr/local/bin/docker-entrypoint-ssl.sh
+              # Newer images share proxy headers in a read-only image file.
+              # Keep the adjusted copy in the writable config volume; .inc
+              # prevents nginx's conf.d/*.conf glob from loading it globally.
+              set -- /etc/nginx/conf.d/nginx.conf
+              if [ -f /etc/nginx/api_proxy_headers.inc ]; then
+                cp /etc/nginx/api_proxy_headers.inc /etc/nginx/conf.d/api_proxy_headers.inc
+                sed -i 's|/etc/nginx/api_proxy_headers.inc|/etc/nginx/conf.d/api_proxy_headers.inc|g' /etc/nginx/conf.d/nginx.conf
+                set -- "$@" /etc/nginx/conf.d/api_proxy_headers.inc
+              fi
+              sed -i -E \
+                -e 's/(listen[[:space:]]+(\[::\]:)?)80([[:space:];])/\18080\3/g' \
+                -e 's/(listen[[:space:]]+(\[::\]:)?)443([[:space:];])/\18443\3/g' \
+                -e 's/proxy_set_header X-Forwarded-Port \$server_port;/proxy_set_header X-Forwarded-Port {{ ternary .Values.frontend.service.httpsPort .Values.frontend.service.httpPort (not (empty $tls)) }};/' \
+                "$@"
+              exec nginx -g 'daemon off;'
           {{- end }}
           env:
             - name: BACKEND_HOST
               value: {{ include "rocketgraph.fullname.backend" . | quote }}
             - name: BACKEND_PORT
               value: "5000"
+            {{- if $restricted }}
+            - name: MC_SSL_PORT
+              value: {{ .Values.backend.env.MC_SSL_PORT | default (.Values.frontend.service.httpsPort | toString) | quote }}
+            {{- end }}
           ports:
             - name: http
-              containerPort: 80
+              containerPort: {{ include "rocketgraph.frontendHttpPort" . }}
               protocol: TCP
             - name: https
-              containerPort: 443
+              containerPort: {{ include "rocketgraph.frontendHttpsPort" . }}
               protocol: TCP
           readinessProbe:
             httpGet:
@@ -71,8 +99,15 @@ spec:
           resources:
             {{- toYaml . | nindent 12 }}
           {{- end }}
-          {{- if or .Values.frontend.tls.existingSecret .Values.frontend.tls.publicCert .Values.frontend.tls.privateKey }}
+          {{- if or $restricted $tls }}
           volumeMounts:
+            {{- if $restricted }}
+            {{- range $mount := list (dict "name" "nginx-config" "path" "/etc/nginx/conf.d") (dict "name" "nginx-run" "path" "/run") (dict "name" "nginx-log" "path" "/var/log/nginx") (dict "name" "nginx-temp" "path" "/var/lib/nginx/tmp") }}
+            - name: {{ $mount.name }}
+              mountPath: {{ $mount.path }}
+            {{- end }}
+            {{- end }}
+            {{- if $tls }}
             - name: tls-certs
               mountPath: /etc/ssl/certs/td.pem
               subPath: public.pem
@@ -88,6 +123,7 @@ spec:
               readOnly: true
             {{- end }}
             {{- end }}
+          {{- end }}
       {{- with .Values.frontend.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
@@ -101,9 +137,19 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       restartPolicy: Always
-      {{- if or .Values.frontend.tls.existingSecret .Values.frontend.tls.publicCert .Values.frontend.tls.privateKey }}
+      {{- if or $restricted $tls }}
       volumes:
+        {{- if $restricted }}
+        {{- range $name := list "nginx-config" "nginx-run" "nginx-log" "nginx-temp" }}
+        - name: {{ $name }}
+          emptyDir: {}
+        {{- end }}
+        {{- end }}
+        {{- if $tls }}
         - name: tls-certs
           secret:
             secretName: {{ include "rocketgraph.frontendTlsSecret" . }}
         {{- end }}
+      {{- end }}
+
+{{- end }}

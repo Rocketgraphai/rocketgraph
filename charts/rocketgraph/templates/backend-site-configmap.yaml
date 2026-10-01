@@ -1,3 +1,4 @@
+{{- if .Values.missionControl.enabled }}
 {{- if or .Values.backend.siteConfig.yml .Values.backend.siteConfig.py }}
 apiVersion: v1
 kind: ConfigMap
@@ -15,4 +16,6 @@ data:
   site_config.py: |
 {{ .Values.backend.siteConfig.py | indent 4 }}
   {{- end }}
+{{- end }}
+
 {{- end }}

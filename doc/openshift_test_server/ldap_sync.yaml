@@ -1,0 +1,104 @@
+# Edit the oc image before applying. Starts suspended.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: xgt-demo-ldap-sync
+  namespace: xgt-demo-ldap-sync
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: xgt-demo-ldap-sync
+rules:
+- apiGroups:
+  - user.openshift.io
+  resources:
+  - groups
+  verbs:
+  - get
+  - list
+  - create
+  - update
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: xgt-demo-ldap-sync
+subjects:
+- kind: ServiceAccount
+  name: xgt-demo-ldap-sync
+  namespace: xgt-demo-ldap-sync
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: xgt-demo-ldap-sync
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: xgt-demo-ldap-sync
+  namespace: xgt-demo-ldap-sync
+spec:
+  schedule: '*/15 * * * *'
+  suspend: true
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 300
+  successfulJobsHistoryLimit: 2
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 300
+      template:
+        spec:
+          serviceAccountName: xgt-demo-ldap-sync
+          restartPolicy: Never
+          securityContext:
+            runAsNonRoot: true
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+          - name: sync
+            image: registry.redhat.io/openshift4/ose-cli:REPLACE_WITH_APPROVED_TAG
+            command:
+            - oc
+            args:
+            - --cache-dir=/tmp/oc-cache
+            - adm
+            - groups
+            - sync
+            - --sync-config=/etc/ldap-sync/sync.yaml
+            - --whitelist=/etc/ldap-sync/groups.txt
+            - --confirm
+            securityContext:
+              allowPrivilegeEscalation: false
+              capabilities:
+                drop:
+                - ALL
+            resources:
+              requests:
+                cpu: 50m
+                memory: 128Mi
+              limits:
+                cpu: '1'
+                memory: 512Mi
+            volumeMounts:
+            - name: config
+              mountPath: /etc/ldap-sync
+              readOnly: true
+            - name: bind
+              mountPath: /etc/ldap-bind
+              readOnly: true
+            - name: ca
+              mountPath: /etc/ldap-ca
+              readOnly: true
+          volumes:
+          - name: config
+            configMap:
+              name: ldap-sync-config
+          - name: bind
+            secret:
+              secretName: ldap-bind
+          - name: ca
+            configMap:
+              name: ldap-ca

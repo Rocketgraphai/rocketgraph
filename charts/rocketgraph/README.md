@@ -44,7 +44,7 @@ helm install rocketgraph ./charts/rocketgraph
 helm install rocketgraph ./charts/rocketgraph --set openshift.enabled=true
 ```
 
-This binds the release ServiceAccount to the `anyuid` SCC. OpenShift's default SCC (`restricted-v2`) runs every container as a random unprivileged UID, and the current Mission Control images cannot run that way: the frontend's nginx runs as root to bind port 80 inside its container, the backend image runs as root, and Percona MongoDB (FIPS deployments) requires its fixed uid 1001. Without `openshift.enabled=true`, pods fail at startup. `anyuid` lets each image run as the user it declares — this is the justification to give a cluster security review that asks why the application needs it. If all your images declare a non-root `USER` without a fixed UID, you can use the less-privileged `nonroot` SCC instead:
+This binds the release ServiceAccount to the `anyuid` SCC. The full stack's current startup configuration includes root and fixed-UID containers. Have the platform administrator review this permission. `anyuid` and FIPS address different requirements: selecting FIPS images does not require granting `anyuid`. For Mission Control, MongoDB and XGT, use the [restricted-v2 profile](#full-stack-with-openshift-restricted-v2) below. If your images and startup configuration support non-root execution, including any required fixed UID, the `nonroot` SCC is another option subject to cluster policy:
 
 ```bash
 helm install rocketgraph ./charts/rocketgraph --set openshift.enabled=true --set openshift.scc=nonroot
@@ -56,6 +56,62 @@ After installing, expose the frontend and get the URL:
 oc expose svc/<release-name>-frontend
 oc get route <release-name>-frontend -o jsonpath='{.spec.host}'
 ```
+
+### Full Stack with OpenShift restricted-v2
+
+In chart 0.4.0, add this to your site values to run XGT, Mission Control and MongoDB without an `anyuid` grant:
+
+```yaml
+openshift:
+  enabled: true
+  scc: restricted-v2
+fips:
+  enabled: true
+```
+
+Mission Control currently requires `fips.enabled=true` with this profile. Helm rejects the non-FIPS combination because that frontend image uses different startup and writable paths. This requirement does not apply to XGT-only releases.
+
+The chart creates a ServiceAccount, drops all capabilities, disables privilege escalation, selects `RuntimeDefault` seccomp and requires non-root execution. OpenShift supplies the namespace UID and volume group. Do not set fixed `runAsUser`, `runAsGroup`, `fsGroup` or `supplementalGroups` for active components. The bundled License Manager and in-container SSSD are not supported by this profile. Supply an XGT license file or external license server as described below.
+
+Verify the admitted SCC after deployment. Helm does not remove SCC grants created separately by an administrator; a remaining broader grant can change which SCC admits the pods:
+
+```bash
+oc -n <namespace> get pods -l app.kubernetes.io/instance=<release> \
+  -o custom-columns='NAME:.metadata.name,SCC:.metadata.annotations.openshift\.io/scc,UID:.spec.containers[0].securityContext.runAsUser'
+```
+
+Mission Control's frontend gets writable nginx runtime directories and listens on **8080/8443** inside its container. The Service still exposes its configured HTTP/HTTPS ports (80/443 by default), so existing Routes and Ingresses continue to target the Service. NetworkPolicies and health checks use the new container ports. HTTP, HTTPS and frontend mTLS retain the image's configuration generation, with the listeners adjusted before nginx starts. External redirects use `backend.env.MC_SSL_PORT` when supplied, otherwise the frontend Service's HTTPS port. Proxy headers use the frontend Service port, not the internal 8080/8443 listener; configure `backend.oidc.frontendUrl` for the actual public URL.
+
+Backend and MongoDB retain their normal entrypoints. MongoDB's encryption-key init container also uses the assigned UID; the chart does not inject UID/GID 1001 in this profile. Use fresh PVCs or arrange an ownership migration for existing storage before enabling it. Optional backend plugin installation and custom ODBC mounts may need additional writable paths or prebuilt images; the profile does not make arbitrary package installation directories writable.
+
+The [OpenShift test-server values](../../doc/openshift_test_server/values.yaml) use this profile with FIPS images, XGT TLS and MongoDB TLS. Replace their site-specific values and create the referenced Secrets before deploying. The tested image versions are XGT `2.7.1-fips`, Mission Control `2.7.0-fips` and Percona MongoDB `8.0.23`; custom images must support the same startup paths. Default installs keep the existing behavior unless this profile is explicitly selected.
+
+### xGT with OpenShift restricted-v2
+
+The same profile supports an **XGT-only release** with the namespace-assigned UID and group. Start with [`examples/xgt_openshift_restricted.yaml`](examples/xgt_openshift_restricted.yaml), edit the hostname, OAuth endpoints and group mappings, and create its referenced Secrets in the same namespace:
+
+```bash
+oc -n xgt create secret generic xgt-license --from-file=xgtd.lic=/path/to/license.lic
+oc -n xgt create secret generic xgt-ssl \
+  --from-file=server.cert.pem=/path/to/server.cert.pem \
+  --from-file=server.key.pem=/path/to/server.key.pem
+oc -n xgt create secret generic oidc-ca --from-file=oidc-ca.pem=/path/to/oidc-ca.pem
+helm upgrade --install xgt-test ./charts/rocketgraph -n xgt \
+  -f charts/rocketgraph/examples/xgt_openshift_restricted.yaml
+```
+
+The namespace must already exist, and the certificates and license must match your deployment. The example selects XGT `2.7.1-fips`, disables Mission Control and MongoDB, and sets `openshift.scc: restricted-v2`. This creates a ServiceAccount without an elevated SCC binding. The chart drops capabilities, disables privilege escalation, selects `RuntimeDefault` seccomp, and leaves UID/GID allocation to OpenShift. Do not supply fixed `runAsUser`, `runAsGroup` or `fsGroup` values for this profile.
+
+The chart starts `/opt/xgtd/bin/xgtd` directly. This bypasses the image entrypoint's configuration-copying steps, which need permissions unavailable to an arbitrary UID. Supply a readable license through a Secret, the files PVC described below, or an external license server. The bundled license in the 2.7.1 image is behind a directory an arbitrary UID cannot traverse. In-container SSSD and the bundled License Manager are outside this profile; use OpenShift OAuth or Keycloak for LDAP-backed authentication.
+
+Check the actual admission result after deployment:
+
+```bash
+oc -n xgt get pods -l app=xgt \
+  -o custom-columns='NAME:.metadata.name,SCC:.metadata.annotations.openshift\.io/scc,UID:.spec.containers[0].securityContext.runAsUser'
+```
+
+This profile does not establish FIPS compliance for the complete deployment; the cluster, TLS configuration and other components still need the appropriate configuration.
 
 ### FIPS Mode
 
@@ -83,7 +139,7 @@ It makes the following changes:
 - **MongoDB TLS** — see [MongoDB TLS](#mongodb-tls).  With `fips.enabled`, `--tlsFIPSMode` is added automatically when TLS is on.
 - **Encryption at rest** — see [MongoDB Encryption at Rest](#mongodb-encryption-at-rest).
 
-On OpenShift, the [OpenShift](#openshift) note about Percona's fixed uid 1001 applies — the default `anyuid` SCC binding handles it.
+On OpenShift, the [restricted-v2 profile](#full-stack-with-openshift-restricted-v2) runs Percona with a namespace-assigned UID. Existing storage must be accessible to that identity; do not assume ownership from an earlier deployment will work unchanged.
 
 ### With xGT License (direct file)
 
@@ -99,6 +155,116 @@ Or pass it inline:
 ```bash
 helm install rocketgraph ./charts/rocketgraph --set-file xgt.license.data=/path/to/xgtd.lic
 ```
+
+`xgt.license.data` means the license file's text, not database data or base64. Prefer `existingSecret` when another system manages the license; leave `data` empty in that case.
+
+### Bring Your Own xGT Files
+
+By default, the chart generates configuration in a ConfigMap, mounts license/TLS Secrets, and uses separate data/log PVCs. To manage all XGT files on an existing PVC, use [`examples/xgt_existing_files.yaml`](examples/xgt_existing_files.yaml). It selects the claim `xgt-files` and the optional parent directory `xgt-prod`:
+
+```yaml
+xgt:
+  hostname: xgt-prod-0
+  files:
+    existingClaim: xgt-files
+    subPath: xgt-prod
+```
+
+Pre-populate the claim with this layout. Remove the `xgt-prod/` parent if `subPath` is empty:
+
+```text
+xgt-prod/
+  conf/
+    xgtd.conf
+    audit.xml
+    grouplabel.csv
+    label.csv
+    oidc-ca.pem
+    ssl/certs/server.cert.pem
+    ssl/private/server.key.pem
+  license/xgtd.lic
+  data/
+  log/
+```
+
+The four directories mount at `/conf`, `/license`, `/data` and `/log`. Configuration and license mounts are read-only. Copy and edit the [example configuration files](examples/xgt_files/), then supply your license and certificates. The example configuration enables TLS and OpenShift OAuth. The storage administrator must make the configuration, keys and license readable by the pod's assigned group, and data/log directories writable. Storage must support the pod's permissions and access mode; an existing claim is not automatically portable between nodes or namespaces.
+
+```bash
+helm upgrade --install xgt-prod ./charts/rocketgraph -n xgt \
+  -f charts/rocketgraph/examples/xgt_existing_files.yaml
+```
+
+In this mode, the chart creates no XGT configuration, license/TLS Secrets, or data/log PVCs. It starts XGT directly and reads the supplied files. Configure TLS, OAuth, memory and label mappings in `xgtd.conf` and the other files; `xgt.extraConfig` and inline configuration do not apply. The chart rejects conflicting sources rather than silently ignoring them. Use the complete example on its own, not layered over a values file containing those sources. `xgt.hostname`, image, resources, service port and health-check settings still apply. Keep XGT's configured memory below the container limit.
+
+To keep data and/or logs on separate existing PVCs, set the corresponding `xgt.persistence` claims. Each override takes precedence over that directory on the common files PVC:
+
+```yaml
+xgt:
+  files:
+    existingClaim: xgt-files
+    subPath: xgt-prod  # Optional; applies only to this claim.
+  persistence:
+    data:
+      existingClaim: xgt-data
+    log:
+      existingClaim: xgt-logs
+```
+
+Here, `xgt-prod/conf` and `xgt-prod/license` come from `xgt-files`, while the roots of `xgt-data` and `xgt-logs` mount at `/data` and `/log`. All claims must already exist in the release namespace. The chart does not create these PVCs or copy data between them.
+
+| Existing-claim overrides | Directories kept on the common files PVC |
+| --- | --- |
+| Neither | `conf`, `license`, `data`, `log` |
+| Data only | `conf`, `license`, `log` |
+| Logs only | `conf`, `license`, `data` |
+| Both | `conf`, `license` |
+
+Only prepare the directories that remain on the common claim. Omit or clear an override to use that directory on the common claim again. See [`examples/xgt_files_separate_data.yaml`](examples/xgt_files_separate_data.yaml) for a complete example with just data separated. Plan file migration before changing claims on an existing release.
+
+After changing configuration on the PVC, explicitly restart XGT:
+
+```bash
+oc -n xgt rollout restart deployment/xgt-prod-xgt
+```
+
+`/data` remains writable for loading and saving data as the assigned non-root user. For example, copy a CSV to the running server and load it into an existing frame from Python:
+
+```bash
+oc -n xgt exec -i deployment/xgt-prod-xgt -- sh -c 'cat > /data/people.csv' < people.csv
+```
+
+```python
+frame.load("xgtd://people.csv")
+```
+
+Server paths are relative to the configured `/data` directory. Files on its PVC survive pod replacement; this does not automatically persist XGT's in-memory frames. Use the [data loading and saving APIs](https://docs.rocketgraph.com/user_ref/graphanalytics/data.html) for that.
+
+For independent servers, use separate claims, or separate parent directories with storage that supports the required concurrent mounts. Never share the same data directory. Helm does not manage or delete an existing claim, and rolling back Helm does not roll back files on it. Changing an existing release from generated files to this mode requires a data migration and PVC retention plan before upgrading.
+
+To manage only configuration externally, set `xgt.config.existingConfigMap` instead. It must contain `xgtd.conf`, `audit.xml`, `grouplabel.csv` and `label.csv`; other file mounts remain managed as usual. Set paths for license, TLS and OAuth CA in that configuration and restart after updates. In particular, a mounted license Secret is at `/license/xgtd.lic` and the OAuth CA mount is at `/etc/ssl/certs/oidc-ca.pem`.
+
+### xGT Startup and Additional Mounts
+
+Use values for deployment customizations so they can be reused on upgrades without editing templates:
+
+```yaml
+xgt:
+  env:
+    - name: SITE_NAME
+      value: example
+  extraVolumes:
+    - name: imports
+      persistentVolumeClaim:
+        claimName: imports
+  extraVolumeMounts:
+    - name: imports
+      mountPath: /data/imports
+      readOnly: true
+```
+
+`xgt.command` and `xgt.args` accept Kubernetes command/argument lists. With a custom command, supply its complete arguments. Otherwise, `args` appends to the direct-start arguments in the restricted/PVC profiles, or is passed to the image entrypoint in the default profile. A custom command must preserve startup and health-port behavior. Extra mounts must use distinct names/paths and cannot replace chart mounts; use the existing-configuration or files-PVC options for that purpose.
+
+Keep per-release settings in version-controlled values files and pass them again to `helm upgrade`. Review release notes and rendered manifests before upgrading. If you modify chart templates instead, maintain a fork and merge upstream changes yourself; Helm does not merge customer template edits into an upstream chart.
 
 ### With xGT License Manager
 
@@ -423,6 +589,47 @@ helm install rocketgraph ./charts/rocketgraph \
   --set backend.env.MC_DEFAULT_XGT_PORT=4367
 ```
 
+### Separate xGT Releases with Fixed Hostnames
+
+For a complete OpenShift LDAP/OAuth walkthrough with YAML and commands, see the [test-server guide](../../doc/openshift_test_server/README.md).
+
+Chart **0.4.0** adds `xgt.hostname` and `missionControl.enabled`. A fixed container hostname supports a hostname-bound license while keeping xGT managed by Helm:
+
+```yaml
+xgt:
+  enabled: true
+  hostname: xgt-test-0
+  license:
+    existingSecret: xgt-license
+```
+
+The workload remains a one-replica Deployment. Kubernetes generates its pod name, while the operating-system hostname inside the container is `xgt-test-0`, including after pod replacement. This setting does not create a DNS endpoint: clients use the release's Service, such as `rocketgraph-xgt:4367`. Verify the hostname with:
+
+```bash
+oc exec deployment/rocketgraph-xgt -- cat /proc/sys/kernel/hostname
+```
+
+For three independent servers, install one release per server. Start with the full test stack, then disable Mission Control and MongoDB in additional releases:
+
+```bash
+helm upgrade --install rocketgraph ./charts/rocketgraph -n xgt \
+  -f site-values.yaml --set xgt.hostname=xgt-test-0
+
+helm upgrade --install xgt-dev ./charts/rocketgraph -n xgt \
+  -f site-values.yaml --set xgt.hostname=xgt-dev-0 \
+  --set missionControl.enabled=false --set mongodb.enabled=false
+
+helm upgrade --install xgt-prod ./charts/rocketgraph -n xgt \
+  -f site-values.yaml --set xgt.hostname=xgt-prod-0 \
+  --set missionControl.enabled=false --set mongodb.enabled=false
+```
+
+Create the namespace and referenced Secrets first. Keep `xgt.enabled=true` in all three releases. Each gets separate xGT configuration, Services and chart-created PVCs; avoid sharing an `existingClaim` between independent servers. Keep these settings on upgrades, preferably in per-release values files. Deleting a release also deletes its chart-created PVCs; plan backups and retention for persistent data.
+
+The test release's Mission Control can connect to all three endpoints. Set its `backend.oidc.xgtAllowedHosts` to `rocketgraph-xgt:4367,xgt-dev-xgt:4367,xgt-prod-xgt:4367`. Provide licenses covering the chosen hostnames and TLS certificates covering the Service names. Mission Control must trust their issuing CAs; leave `backend.env.XGT_SERVER_CN` unset so each endpoint is checked against its own name.
+
+`missionControl.enabled=false` suppresses frontend/backend workloads and their resources, but does not disable MongoDB automatically. xGT-only releases still honor `backend.oidc.caCertExistingSecret` or `backend.oidc.caCert` for the shared OIDC CA mount. All normal `xgt.*` settings continue to apply.
+
 ### LDAP Authentication
 
 xGT supports LDAP authentication via PAM/SSSD. When enabled, the chart mounts an SSSD
@@ -539,41 +746,66 @@ xgtd,xgtadmin           xgtadmin
 
 ### OIDC Authentication
 
-To enable OIDC login, set `XGT_AUTH_TYPES` and configure the xGT OIDC section.
-In most cases the backend discovers the issuer and client ID automatically from xGT —
-no `backend.oidc.*` overrides are needed.
+The existing `OidcAuth` option supports both standard OIDC providers such as
+Keycloak and **OpenShift OAuth2**. OpenShift's built-in OAuth server uses the
+authorization-code flow; XGT validates its access tokens and reads identity and
+groups through the OpenShift User API. Keep the `security.oidc`, `backend.oidc`
+and `MC_OIDC_*` configuration names for both integrations.
+
+To enable OIDC login, set `backend.env.XGT_AUTH_TYPES` and configure `xgt.extraConfig.security.oidc`. The backend discovers the issuer, client ID, and scopes from xGT when the issuer or client ID is unset. Supply confidential-client secrets and private CA certificates separately. Override the client ID when Mission Control has its own client; override `frontendUrl` only when the derived public URL is wrong.
 
 See the [OIDC configuration guide](../../doc/oidc_configuration.md) for how the redirect URI is derived, the full environment-variable reference, and the security allowlists (`MC_XGT_ALLOWED_HOSTS`, `MC_OIDC_ALLOWED_ORIGINS`) — that guide includes Kubernetes and OpenShift examples, such as the wildcard patterns needed for StatefulSet pod hostnames and cluster subdomains.
 
 #### Keycloak
 
+Register a confidential client named `mission-control` with Standard flow enabled and callback `https://mc.example.com/api/login/oidc/callback`. Store its secret in `mission-control-oidc` under key `MC_OIDC_CLIENT_SECRET`. Keep the Python browser client `xgtd-client` public with PKCE `S256` and callback `http://127.0.0.1:8765/callback`. Mission Control 2.7.0 does not send PKCE, so do not require it on the confidential client.
+
 ```yaml
 backend:
   env:
     XGT_AUTH_TYPES: "['OidcAuth']"
+    MC_DEFAULT_XGT_PORT: '4367'
+  oidc:
+    clientId: mission-control
+    existingSecret: mission-control-oidc
 
 xgt:
   extraConfig:
     security.oidc:
-      validation_mode: introspection
+      validation_mode: jwt
       issuer: https://idp.example.com/realms/xgt
-      jwks_uri: https://idp.example.com/realms/xgt/protocol/openid-connect/certs
       audience: xgtd-client
       client_id: xgtd-client
       username_claim: preferred_username
       groups_claim: groups
-      introspection_client_id: xgtd-introspection
-      introspection_client_secret: <secret>
+      scopes: openid profile email
 ```
+
+Both clients need Group Membership and Audience mappers in their access tokens, with audience `xgtd-client` and claim `groups`. The backend discovers the issuer and scopes from xGT while using its own client ID. Add private-CA settings below if needed. For upstream HTTPS termination, set `frontend.tls.external: true`; if proxy headers produce the wrong origin, also set `backend.oidc.frontendUrl` to the public HTTPS URL.
 
 #### OpenShift OAuth
 
+This is OAuth2 authentication through `OidcAuth`, with
+`validation_mode: openshift_userapi`. Mission Control needs the OAuthClient's
+secret to exchange authorization codes for tokens. XGT validates the resulting
+tokens through the User API and does not need that client secret. The
+OAuthClient's name is the client ID; `existingSecret` below instead names the
+Kubernetes Secret containing the client secret.
+
 ```yaml
+frontend:
+  tls:
+    external: true  # HTTPS terminates at the edge Route.
 backend:
   env:
     XGT_AUTH_TYPES: "['OidcAuth']"
+    MC_DEFAULT_XGT_PORT: '4367'
   oidc:
-    tlsVerify: "false"   # or provide caCertExistingSecret
+    existingSecret: openshift-oauth-client
+    caCertExistingSecret: oidc-ca
+    tlsVerify: /etc/ssl/certs/oidc-ca.pem
+    # Set only if the proxy derives the wrong public origin:
+    frontendUrl: https://mc.apps.cluster.example.com
 
 xgt:
   extraConfig:
@@ -587,7 +819,9 @@ xgt:
       groups_claim: groups
 ```
 
-The OAuthClient must have `https://<frontend-route>/api/login/oidc/callback` in its `redirectURIs` list.
+Create `openshift-oauth-client` with key `MC_OIDC_CLIENT_SECRET`, matching the OAuthClient's secret. Create `oidc-ca` as shown below, with a CA bundle that trusts both the OAuth and User API endpoints. The OAuthClient must allow `user:info` in `scopeRestrictions` and contain `https://mc.apps.cluster.example.com/api/login/oidc/callback` in `redirectURIs`. Include the Python loopback callback if that client also uses this OAuthClient.
+
+Issuer, client ID, and `user:info` are discovered from xGT. The callback is derived from the public frontend URL, so `redirectUri` need not also be set. Omit the CA settings when the endpoints are already trusted. See the [OIDC guide](../../doc/oidc_configuration.md#ldap-groups-and-automated-accounts) for LDAP group synchronization, automation, and login verification.
 
 #### CA Certificates
 
@@ -603,7 +837,10 @@ kubectl create secret generic oidc-ca --from-file=oidc-ca.pem=/path/to/ca.pem -n
 backend:
   oidc:
     caCertExistingSecret: oidc-ca
+    tlsVerify: /etc/ssl/certs/oidc-ca.pem
 ```
+
+The mount supplies the certificate file; `tlsVerify` selects that file for backend HTTPS verification. Both are needed when the CA is not already trusted.
 
 ### Site Configuration
 
@@ -777,8 +1014,8 @@ The Ingress routes to the frontend service on port 80. The ingress controller te
 | `backend.oidc.clientId`            | Override OAuth2 client ID (auto-discovered from xGT if empty)                                  | `""`    |
 | `backend.oidc.clientSecret`        | Client secret — inline value creates a Secret                                                  | `""`    |
 | `backend.oidc.existingSecret`      | Existing Secret with key `MC_OIDC_CLIENT_SECRET`                                               | `""`    |
-| `backend.oidc.scopes`              | Space-separated OAuth2 scopes                                                                  | `""`    |
-| `backend.oidc.frontendUrl`         | Override frontend base URL for post-login redirects                                            | `""`    |
+| `backend.oidc.scopes`              | Optional scope override; uses xGT-advertised scopes during discovery when empty                | `""`    |
+| `backend.oidc.frontendUrl`         | Override public frontend origin for post-login redirects and the derived callback              | `""`    |
 | `backend.oidc.redirectUri`         | Override redirect URI sent to the IdP                                                          | `""`    |
 | `backend.oidc.allowedOrigins`      | Comma-separated allowed origins (defense-in-depth, optional)                                   | `""`    |
 | `backend.oidc.tlsVerify`           | `true`, `false`, or path to CA bundle for OIDC HTTP calls                                      | `""`    |
@@ -827,6 +1064,15 @@ The Ingress routes to the frontend service on port 80. The ingress controller te
 | Parameter                   | Description                          | Default        |
 |-----------------------------|--------------------------------------|----------------|
 | `xgt.enabled`               | Deploy xGT as part of the release    | `true`         |
+| `xgt.hostname`              | Fixed container OS hostname for licensing; does not change the pod or Service name | `""` |
+| `xgt.files.existingClaim`   | Common PVC for conf/license/data/log; separate data/log existing claims override their mounts | `""` |
+| `xgt.files.subPath`         | Optional relative parent directory on the common files PVC; does not apply to separate data/log claims | `""` |
+| `xgt.persistence.data.existingClaim` | Existing data PVC mounted at `/data`; takes precedence over the files PVC | `""` |
+| `xgt.persistence.log.existingClaim` | Existing log PVC mounted at `/log`; takes precedence over the files PVC | `""` |
+| `xgt.config.existingConfigMap` | Existing complete configuration ConfigMap | `""` |
+| `xgt.command` / `xgt.args`  | Container command override / arguments | `[]` |
+| `xgt.env`                  | Additional Kubernetes environment entries | `[]` |
+| `xgt.extraVolumes` / `xgt.extraVolumeMounts` | Additional Kubernetes volumes / container mounts | `[]` |
 | `xgt.config.grouplabelCsv`  | Override grouplabel.csv contents     | `""`           |
 | `xgt.config.labelCsv`       | Override label.csv contents          | `""`           |
 | `xgt.extraConfig`           | Extra xgtd.conf key-value overrides  | `{}`           |
@@ -845,11 +1091,12 @@ The Ingress routes to the frontend service on port 80. The ingress controller te
 | Parameter                    | Description                                                      | Default   |
 |------------------------------|------------------------------------------------------------------|-----------|
 | `imagePullSecrets`           | Pull secrets applied to every pod, for private or mirrored registries | `[]` |
+| `missionControl.enabled`    | Deploy frontend/backend and their resources; disable MongoDB separately for an xGT-only release | `true` |
 | `fips.enabled`               | Use FIPS images (`-fips` tags + Percona MongoDB); see FIPS Mode  | `false`   |
 | `fips.mongoImage.repository` | FIPS MongoDB image repository                                    | `docker.io/percona/percona-server-mongodb` |
 | `fips.mongoImage.tag`        | FIPS MongoDB image tag                                           | `8.0.23`  |
-| `openshift.enabled`          | Create ServiceAccount bound to the SCC set by `openshift.scc`    | `false`   |
-| `openshift.scc`              | SCC to grant: `anyuid` (fixed-UID images) or `nonroot`           | `anyuid`  |
+| `openshift.enabled`          | Create a ServiceAccount and configure the selected SCC profile | `false`   |
+| `openshift.scc`              | `anyuid`, `nonroot`, or `restricted-v2` for XGT/Mission Control/MongoDB (no elevated binding) | `anyuid` |
 | `networkPolicy.enabled`      | Restrict inter-component traffic with per-component policies     | `true`    |
 | `xgt.license.existingSecret` | Secret with key `xgtd.lic` (direct file mount)                   | `""`      |
 | `xgt.license.data`           | Inline license content (use `--set-file`)                        | `""`      |

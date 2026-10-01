@@ -1,0 +1,48 @@
+# XGT only, with Helm-managed configuration and existing license/TLS/CA Secrets.
+# Supply the referenced Secrets and edit issuer, client ID and group names.
+missionControl:
+  enabled: false
+mongodb:
+  enabled: false
+openshift:
+  enabled: true
+  scc: restricted-v2
+fips:
+  enabled: true
+xgt:
+  hostname: xgt-test-0
+  image:
+    tag: 2.7.1
+  license:
+    existingSecret: xgt-license
+  ssl:
+    enabled: true
+    existingSecret: xgt-ssl
+  config:
+    grouplabelCsv: |
+      group,label
+      xgtd,xgtadmin
+      xgt-admins,xgtadmin
+      xgt-users,data-users
+    labelCsv: |
+      label
+      xgtadmin
+      data-users
+  extraConfig:
+    system.max_memory: '1'
+    security.oidc:
+      issuer: https://oauth-openshift.apps.example.com
+      client_id: xgt-demo-client
+      validation_mode: openshift_userapi
+      openshift_user_api_uri: https://kubernetes.default.svc/apis/user.openshift.io/v1/users/~
+      username_claim: metadata.name
+      groups_claim: groups
+      scopes: user:info
+      # The chart defaults ca_cert to the mounted OIDC CA when omitted.
+  resources:
+    requests: {cpu: 500m, memory: 2Gi}
+    limits: {cpu: '2', memory: 4Gi}
+backend:
+  oidc:
+    # Shared CA mount is available even when Mission Control is disabled.
+    caCertExistingSecret: oidc-ca

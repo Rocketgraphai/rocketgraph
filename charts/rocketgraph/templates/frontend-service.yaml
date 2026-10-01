@@ -1,3 +1,4 @@
+{{- if .Values.missionControl.enabled }}
 apiVersion: v1
 kind: Service
 metadata:
@@ -14,10 +15,12 @@ spec:
   ports:
     - name: http
       port: {{ .Values.frontend.service.httpPort }}
-      targetPort: 80
+      targetPort: {{ include "rocketgraph.frontendHttpPort" . }}
     - name: https
       port: {{ .Values.frontend.service.httpsPort }}
-      targetPort: 443
+      targetPort: {{ include "rocketgraph.frontendHttpsPort" . }}
   selector:
     app: frontend
     app.kubernetes.io/instance: {{ .Release.Name }}
+
+{{- end }}

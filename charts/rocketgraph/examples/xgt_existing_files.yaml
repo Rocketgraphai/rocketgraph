@@ -1,0 +1,23 @@
+# Complete XGT-only values example. Do not layer over the managed-config example.
+# Pre-populate PVC xgt-files with xgt-prod/{conf,license,data,log}/.
+# Configuration, TLS/CA files and license are supplied on the PVC.
+# To split out data/logs, set xgt.persistence.data/log.existingClaim.
+missionControl:
+  enabled: false
+mongodb:
+  enabled: false
+openshift:
+  enabled: true
+  scc: restricted-v2
+fips:
+  enabled: true
+xgt:
+  hostname: xgt-prod-0
+  image:
+    tag: 2.7.1
+  files:
+    existingClaim: xgt-files
+    subPath: xgt-prod
+  resources:
+    requests: {cpu: 500m, memory: 2Gi}
+    limits: {cpu: '2', memory: 4Gi}

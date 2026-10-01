@@ -1,1 +1,4 @@
+{{- if .Values.missionControl.enabled }}
 {{- include "rocketgraph.pdb" (list "backend" .) -}}
+
+{{- end }}
