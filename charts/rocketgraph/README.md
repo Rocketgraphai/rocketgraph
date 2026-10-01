@@ -606,7 +606,7 @@ xgt:
 The workload remains a one-replica Deployment. Kubernetes generates its pod name, while the operating-system hostname inside the container is `xgt-test-0`, including after pod replacement. This setting does not create a DNS endpoint: clients use the release's Service, such as `rocketgraph-xgt:4367`. Verify the hostname with:
 
 ```bash
-oc exec deployment/rocketgraph-xgt -- cat /proc/sys/kernel/hostname
+oc -n xgt exec deployment/rocketgraph-xgt -- cat /proc/sys/kernel/hostname
 ```
 
 For three independent servers, install one release per server. Start with the full test stack, then disable Mission Control and MongoDB in additional releases:
