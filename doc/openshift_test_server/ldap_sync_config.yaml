@@ -1,0 +1,31 @@
+apiVersion: v1
+kind: LDAPSyncConfig
+url: ldaps://ldap.example.com:636
+insecure: false
+ca: /etc/ldap-ca/ca.crt
+bindDN: cn=xgt-bind,dc=example,dc=com
+bindPassword:
+  file: /etc/ldap-bind/bindPassword
+# Use these same DNs in ldap_groups.txt. Keep the resulting OpenShift names
+# aligned with xgt.config.grouplabelCsv in values.yaml.
+groupUIDNameMapping:
+  cn=xgt-admins,ou=groups,dc=example,dc=com: xgt-admins
+  cn=xgt-users,ou=groups,dc=example,dc=com: xgt-users
+rfc2307:
+  groupsQuery:
+    baseDN: ou=groups,dc=example,dc=com
+    scope: sub
+    derefAliases: never
+    pageSize: 0
+  groupUIDAttribute: dn
+  groupNameAttributes: [cn]
+  groupMembershipAttributes: [member]
+  usersQuery:
+    baseDN: ou=people,dc=example,dc=com
+    scope: sub
+    derefAliases: never
+    pageSize: 0
+  userUIDAttribute: dn
+  userNameAttributes: [uid]
+  tolerateMemberNotFoundErrors: false
+  tolerateMemberOutOfScopeErrors: false

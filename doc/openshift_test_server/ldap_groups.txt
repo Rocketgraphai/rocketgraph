@@ -1,0 +1,2 @@
+cn=xgt-admins,ou=groups,dc=example,dc=com
+cn=xgt-users,ou=groups,dc=example,dc=com

@@ -1,4 +1,4 @@
-{{- if and .Values.xgt.enabled (not .Values.xgt.persistence.data.existingClaim) }}
+{{- if and .Values.xgt.enabled (not .Values.xgt.files.existingClaim) (not .Values.xgt.persistence.data.existingClaim) }}
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -17,7 +17,7 @@ spec:
   storageClassName: {{ .Values.xgt.persistence.data.storageClassName | quote }}
   {{- end }}
 {{- end }}
-{{- if and .Values.xgt.enabled (not .Values.xgt.persistence.log.existingClaim) }}
+{{- if and .Values.xgt.enabled (not .Values.xgt.files.existingClaim) (not .Values.xgt.persistence.log.existingClaim) }}
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim

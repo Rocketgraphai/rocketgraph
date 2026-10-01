@@ -1,3 +1,4 @@
+{{- if .Values.missionControl.enabled }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -39,7 +40,7 @@ spec:
       {{- if .Values.openshift.enabled }}
       serviceAccountName: {{ include "rocketgraph.fullname.serviceaccount" . }}
       {{- end }}
-      {{- with .Values.backend.podSecurityContext }}
+      {{- with (include "rocketgraph.podSecurityContext" (dict "root" . "context" .Values.backend.podSecurityContext) | fromYaml) }}
       securityContext:
         {{- toYaml . | nindent 8 }}
       {{- end }}
@@ -47,7 +48,7 @@ spec:
         - name: backend
           image: "{{ .Values.backend.image.repository }}:{{ coalesce .Values.backend.image.tag .Chart.AppVersion }}{{ include "rocketgraph.fipsSuffix" . }}"
           imagePullPolicy: {{ .Values.backend.image.pullPolicy }}
-          {{- with .Values.backend.containerSecurityContext }}
+          {{- with (include "rocketgraph.containerSecurityContext" (dict "root" . "context" .Values.backend.containerSecurityContext) | fromYaml) }}
           securityContext:
             {{- toYaml . | nindent 12 }}
           {{- end }}
@@ -298,3 +299,5 @@ spec:
             secretName: {{ include "rocketgraph.mongodbTlsSecret" . }}
         {{- end }}
       {{- end }}
+
+{{- end }}

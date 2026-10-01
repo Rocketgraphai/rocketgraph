@@ -1,5 +1,10 @@
 imagePullSecrets: []
 
+# Disable the frontend/backend for a separate xGT-only release.
+# Set mongodb.enabled=false too when no bundled database is needed.
+missionControl:
+  enabled: true
+
 frontend:
   image:
     repository: docker.io/rocketgraph/mission-control-frontend
@@ -217,6 +222,21 @@ mongodb:
 
 xgt:
   enabled: true  # Set to false to use an external xGT server
+  # Stable OS hostname for hostname-bound licenses; pod metadata.name still varies.
+  hostname: ""
+  # Use one pre-populated PVC for conf/, license/, data/, log/.
+  # When set, configuration/TLS/license files are managed on this PVC, not by Helm.
+  # Optional persistence.data/log.existingClaim overrides mount separate PVCs
+  # at /data and/or /log; all remaining directories stay on this files PVC.
+  files:
+    existingClaim: ""
+    subPath: ""  # Optional parent directory, e.g. xgt-prod (relative, no trailing slash).
+  # Native Kubernetes startup/env/mount overrides. Lists replace supplied lists.
+  command: []
+  args: []
+  env: []
+  extraVolumes: []
+  extraVolumeMounts: []
   image:
     repository: docker.io/rocketgraph/xgt
     tag: "2.7.1"  # xGT versions independently of the chart's appVersion.
@@ -264,11 +284,11 @@ xgt:
     data:
       size: 10Gi
       storageClassName: ""
-      existingClaim: ""
+      existingClaim: ""  # Also overrides /data when files.existingClaim is set.
     log:
       size: 1Gi
       storageClassName: ""
-      existingClaim: ""
+      existingClaim: ""  # Also overrides /log when files.existingClaim is set.
   ssl:
     enabled: false
     existingSecret: ""  # Must have keys: server.cert.pem, server.key.pem
@@ -278,7 +298,7 @@ xgt:
     caCert: ""          # Inline CA cert PEM for validating client certs (ca-chain.cert.pem)
   license:
     existingSecret: ""  # Must have key: xgtd.lic
-    data: ""            # Plain-text license content
+    data: ""            # License FILE TEXT, not database data or base64. Prefer existingSecret.
   # LDAP authentication via SSSD
   ldap:
     enabled: false
@@ -292,6 +312,8 @@ xgt:
     sssdConfig: ""    # raw sssd.conf content (overrides uri/baseDn/bindDn/etc.)
   # xGT config file overrides
   config:
+    # Must contain xgtd.conf, audit.xml, grouplabel.csv and label.csv.
+    existingConfigMap: ""
     grouplabelCsv: ""  # Override grouplabel.csv contents
     labelCsv: ""       # Override label.csv contents
     proxyList: ""      # Newline-separated list of proxy CNs for PKIAuth (sets security.proxy_list)
@@ -387,12 +409,13 @@ fips:
     tag: 8.0.23
 
 openshift:
-  # Set to true when deploying on OpenShift — creates a ServiceAccount bound to the SCC below.
+  # Set to true on OpenShift — creates the release ServiceAccount.
   enabled: false
-  # SCC granted to the release ServiceAccount.
-  # anyuid   — required when any image has a fixed non-root UID (e.g. Percona MongoDB uid 1001).
-  # nonroot  — sufficient when all images declare a non-root USER but without a fixed UID;
-  #            pair with containerSecurityContext.runAsNonRoot: true on each component.
+  # anyuid / nonroot: grant that SCC to the release ServiceAccount.
+  # restricted-v2: non-root XGT/Mission Control/MongoDB profile; no elevated SCC grant.
+  # Mission Control requires fips.enabled=true with restricted-v2.
+  # OpenShift assigns UID/fsGroup. Frontend uses writable runtime dirs and ports 8080/8443.
+  # Fixed non-root UIDs can use nonroot if permitted by cluster policy.
   scc: anyuid
 
 networkPolicy:

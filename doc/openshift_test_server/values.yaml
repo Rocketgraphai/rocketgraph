@@ -1,0 +1,103 @@
+# Requires chart 0.4.0 or later.
+# Full test stack. Additional releases can disable Mission Control and MongoDB.
+# Keep image tags unsuffixed; Helm adds -fips.
+openshift:
+  enabled: true
+  scc: restricted-v2
+fips:
+  enabled: true
+xgt:
+  enabled: true
+  hostname: demo-xgt-test
+  image:
+    tag: 2.7.1
+  license:
+    existingSecret: xgt-license
+  ssl:
+    enabled: true
+    existingSecret: xgt-ssl
+  config:
+    grouplabelCsv: |
+      group,label
+      xgtd,xgtadmin
+      xgt-admins,xgtadmin
+      xgt-users,data-users
+      system:serviceaccounts:xgt-demo-jobs,automation
+    labelCsv: |
+      label
+      xgtadmin
+      data-users
+      automation
+  extraConfig:
+    system.max_memory: '1'
+    security.oidc:
+      issuer: https://oauth-openshift.apps.example.com
+      client_id: xgt-demo-client
+      validation_mode: openshift_userapi
+      openshift_user_api_uri: https://kubernetes.default.svc/apis/user.openshift.io/v1/users/~
+      username_claim: metadata.name
+      groups_claim: groups
+      scopes: user:info
+      ca_cert: /etc/ssl/certs/oidc-ca.pem
+  resources:
+    requests:
+      cpu: 500m
+      memory: 2Gi
+    limits:
+      cpu: '2'
+      memory: 4Gi
+  persistence:
+    data:
+      size: 10Gi
+    log:
+      size: 1Gi
+frontend:
+  image:
+    tag: 2.7.0
+  tls:
+    external: true
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: '1'
+      memory: 256Mi
+backend:
+  image:
+    tag: 2.7.0
+  env:
+    XGT_AUTH_TYPES: "['OidcAuth']"
+    MC_DEFAULT_XGT_PORT: '4367'
+  tls:
+    existingSecret: backend-tls
+  oidc:
+    existingSecret: xgt-oauth-client
+    caCertExistingSecret: oidc-ca
+    tlsVerify: /etc/ssl/certs/oidc-ca.pem
+    frontendUrl: https://mc-xgt-test.apps.example.com
+    xgtAllowedHosts: rocketgraph-xgt:4367,xgt-dev-xgt:4367,xgt-prod-xgt:4367
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: '1'
+      memory: 1Gi
+mongodb:
+  auth:
+    enabled: true
+    existingSecret: mongodb-auth
+  tls:
+    enabled: true
+    mode: requireTLS
+    existingSecret: mongodb-tls
+  resources:
+    requests:
+      cpu: 100m
+      memory: 512Mi
+    limits:
+      cpu: '1'
+      memory: 2Gi
+  persistence:
+    size: 5Gi

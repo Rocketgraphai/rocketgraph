@@ -1,0 +1,18 @@
+# Fragment: append this entry under spec.identityProviders in `oc edit oauth cluster`.
+# This is not a standalone object for `oc apply`. Preserve existing providers.
+- name: xgt-demo-ldap
+  mappingMethod: claim
+  type: LDAP
+  ldap:
+    url: ldaps://ldap.example.com:636/ou=people,dc=example,dc=com?uid?sub?(objectClass=inetOrgPerson)
+    bindDN: cn=xgt-bind,dc=example,dc=com
+    bindPassword:
+      name: xgt-demo-ldap-bind
+    ca:
+      name: xgt-demo-ldap-ca
+    insecure: false
+    attributes:
+      id: [dn]
+      preferredUsername: [uid]
+      name: [cn]
+      email: [mail]

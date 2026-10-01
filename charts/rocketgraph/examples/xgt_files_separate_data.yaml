@@ -1,0 +1,29 @@
+# Complete XGT-only example: configuration, license and logs on xgt-files;
+# data on a separate existing PVC. Both claims must be in the release namespace.
+# Pre-populate xgt-files with xgt-prod/{conf,license,log}/.
+# The root of xgt-data mounts at /data; files.subPath does not apply to it.
+missionControl:
+  enabled: false
+mongodb:
+  enabled: false
+openshift:
+  enabled: true
+  scc: restricted-v2
+fips:
+  enabled: true
+xgt:
+  hostname: demo-xgt-prod
+  image:
+    tag: 2.7.1
+  files:
+    existingClaim: xgt-files
+    subPath: xgt-prod
+  persistence:
+    data:
+      existingClaim: xgt-data
+    # To put logs on a separate PVC too, uncomment:
+    # log:
+    #   existingClaim: xgt-logs
+  resources:
+    requests: {cpu: 500m, memory: 2Gi}
+    limits: {cpu: '2', memory: 4Gi}

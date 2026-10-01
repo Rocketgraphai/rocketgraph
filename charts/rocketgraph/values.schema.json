@@ -1185,7 +1185,7 @@
                 },
                 "existingClaim": {
                   "type": "string",
-                  "description": "Name of an existing PersistentVolumeClaim to use instead of creating one",
+                  "description": "Existing PVC mounted at /data. Takes precedence over files.existingClaim for this directory.",
                   "default": ""
                 }
               }
@@ -1207,7 +1207,7 @@
                 },
                 "existingClaim": {
                   "type": "string",
-                  "description": "Name of an existing PersistentVolumeClaim to use instead of creating one",
+                  "description": "Existing PVC mounted at /log. Takes precedence over files.existingClaim for this directory.",
                   "default": ""
                 }
               }
@@ -1263,7 +1263,7 @@
             },
             "data": {
               "type": "string",
-              "description": "Raw xGT license data",
+              "description": "Plain-text license file contents, not database data or base64. Ignored when existingSecret is provided.",
               "default": ""
             }
           }
@@ -1339,6 +1339,11 @@
               "type": "string",
               "description": "Newline-separated list of proxy CNs for PKIAuth (sets security.proxy_list)",
               "default": ""
+            },
+            "existingConfigMap": {
+              "type": "string",
+              "default": "",
+              "description": "Use existing XGT configuration files instead of generating a ConfigMap."
             }
           }
         },
@@ -1566,6 +1571,65 @@
               }
             }
           }
+        },
+        "hostname": {
+          "type": "string",
+          "default": "",
+          "maxLength": 63,
+          "pattern": "^([a-z0-9]([-a-z0-9]*[a-z0-9])?)?$",
+          "description": "Stable container OS hostname for hostname-bound licenses; leaves the Deployment and generated pod name unchanged."
+        },
+        "files": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "existingClaim": {
+              "type": "string",
+              "default": "",
+              "description": "Common PVC for conf, license, data and log; persistence.data/log.existingClaim overrides the corresponding mount."
+            },
+            "subPath": {
+              "type": "string",
+              "default": "",
+              "pattern": "^([^./][^/]*)(/[^./][^/]*)*$|^$",
+              "description": "Relative parent directory on the common files PVC; does not apply to separate data/log claims. No dot or parent segments."
+            }
+          }
+        },
+        "command": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        },
+        "args": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        },
+        "env": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          },
+          "default": []
+        },
+        "extraVolumes": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          },
+          "default": []
+        },
+        "extraVolumeMounts": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          },
+          "default": []
         }
       }
     },
@@ -1610,11 +1674,12 @@
         },
         "scc": {
           "type": "string",
-          "description": "SCC to grant: anyuid (required for fixed-UID images) or nonroot",
+          "description": "anyuid/nonroot grant that SCC; restricted-v2 configures non-root XGT, Mission Control and MongoDB without an elevated SCC binding. Mission Control requires fips.enabled=true with restricted-v2.",
           "default": "anyuid",
           "enum": [
             "anyuid",
-            "nonroot"
+            "nonroot",
+            "restricted-v2"
           ]
         }
       }
@@ -1687,6 +1752,17 @@
           "items": {
             "type": "object"
           }
+        }
+      }
+    },
+    "missionControl": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Deploy the Mission Control frontend and backend. Disable MongoDB separately for an xGT-only release."
         }
       }
     }

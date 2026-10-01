@@ -1,3 +1,4 @@
+{{- if .Values.missionControl.enabled }}
 {{- if and .Values.backend.odbc.enabled (not .Values.backend.odbc.existingClaim) }}
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -34,4 +35,6 @@ spec:
   {{- if .Values.backend.iaccess.storageClassName }}
   storageClassName: {{ .Values.backend.iaccess.storageClassName | quote }}
   {{- end }}
+{{- end }}
+
 {{- end }}

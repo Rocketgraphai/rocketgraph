@@ -128,6 +128,34 @@ FIPS image tag suffix — appends "-fips" when fips.enabled=true, empty otherwis
 {{- if .Values.fips.enabled }}-fips{{- end -}}
 {{- end -}}
 
+{{/* Security contexts for the namespace-assigned OpenShift UID/GID profile. */}}
+{{- define "rocketgraph.podSecurityContext" -}}
+{{- $context := deepCopy (.context | default dict) -}}
+{{- if and .root.Values.openshift.enabled (eq .root.Values.openshift.scc "restricted-v2") -}}
+{{- $_ := set $context "seccompProfile" (dict "type" "RuntimeDefault") -}}
+{{- end -}}
+{{- toYaml $context -}}
+{{- end -}}
+
+{{- define "rocketgraph.containerSecurityContext" -}}
+{{- $context := deepCopy (.context | default dict) -}}
+{{- if and .root.Values.openshift.enabled (eq .root.Values.openshift.scc "restricted-v2") -}}
+{{- $_ := set $context "runAsNonRoot" true -}}
+{{- $_ := set $context "allowPrivilegeEscalation" false -}}
+{{- $_ := set $context "capabilities" (dict "drop" (list "ALL")) -}}
+{{- $_ := set $context "seccompProfile" (dict "type" "RuntimeDefault") -}}
+{{- end -}}
+{{- toYaml $context -}}
+{{- end -}}
+
+{{- define "rocketgraph.frontendHttpPort" -}}
+{{- if and .Values.openshift.enabled (eq .Values.openshift.scc "restricted-v2") -}}8080{{- else -}}80{{- end -}}
+{{- end -}}
+
+{{- define "rocketgraph.frontendHttpsPort" -}}
+{{- if and .Values.openshift.enabled (eq .Values.openshift.scc "restricted-v2") -}}8443{{- else -}}443{{- end -}}
+{{- end -}}
+
 {{/*
 MongoDB image — switches to the FIPS image (Percona) when fips.enabled=true.
 */}}
