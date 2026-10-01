@@ -55,7 +55,7 @@ class ReleaseTests(unittest.TestCase):
                 'mongodb': {'enabled': False},
                 'openshift': {'enabled': True},
                 'fips': {'enabled': True},
-                'xgt': {'hostname': release + '-0',
+                'xgt': {'hostname': 'demo-' + release,
                         'license': {'existingSecret': release + '-license'},
                         'ssl': {'enabled': True, 'existingSecret': release + '-tls'},
                         'extraConfig': {'security.oidc': {'client_id': release}}},
@@ -63,7 +63,7 @@ class ReleaseTests(unittest.TestCase):
             deployments = [obj for obj in objects if obj['kind'] == 'Deployment']
             self.assertEqual(len(deployments), 1)
             pod = deployments[0]['spec']['template']['spec']
-            self.assertEqual(pod['hostname'], release + '-0')
+            self.assertEqual(pod['hostname'], 'demo-' + release)
             self.assertEqual(pod['containers'][0]['image'],
                              'docker.io/rocketgraph/xgt:2.7.1-fips')
             secrets = {v['secret']['secretName'] for v in pod['volumes'] if 'secret' in v}
@@ -139,8 +139,8 @@ class ReleaseTests(unittest.TestCase):
 
     def test_documented_openshift_values_share_one_mission_control(self):
         path = CHART.parents[1] / 'doc/openshift_test_server/values.yaml'
-        for release, hostname in [('rocketgraph', 'xgt-test-0'),
-                                  ('xgt-dev', 'xgt-dev-0'), ('xgt-prod', 'xgt-prod-0')]:
+        for release, hostname in [('rocketgraph', 'demo-xgt-test'),
+                                  ('xgt-dev', 'demo-xgt-dev'), ('xgt-prod', 'demo-xgt-prod')]:
             with self.subTest(release=release):
                 values = yaml.safe_load(path.read_text())
                 if release != 'rocketgraph':
@@ -178,7 +178,7 @@ class CustomizationTests(unittest.TestCase):
         self.assertEqual(sum(o['kind'] == 'ServiceAccount' for o in objects), 1)
         pod = component(objects, 'Deployment', 'xgt')['spec']['template']['spec']
         container = pod['containers'][0]
-        self.assertEqual(pod['hostname'], 'xgt-test-0')
+        self.assertEqual(pod['hostname'], 'demo-xgt-test')
         self.assertEqual(pod['securityContext']['seccompProfile']['type'], 'RuntimeDefault')
         self.assertTrue(container['securityContext']['runAsNonRoot'])
         self.assertFalse(container['securityContext']['allowPrivilegeEscalation'])

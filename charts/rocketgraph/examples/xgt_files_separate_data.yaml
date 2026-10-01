@@ -12,7 +12,7 @@ openshift:
 fips:
   enabled: true
 xgt:
-  hostname: xgt-prod-0
+  hostname: demo-xgt-prod
   image:
     tag: 2.7.1
   files:

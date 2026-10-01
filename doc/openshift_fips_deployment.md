@@ -32,7 +32,7 @@ This integration is **OpenShift OAuth2 authentication**. The API remains `xgt.Oi
 
 Example names throughout: application namespace `xgt`, automation namespace `xgt-jobs`, Helm release `rocketgraph`, OAuthClient `xgt-client`, and Mission Control `https://mc.apps.example.com`. Replace them consistently.
 
-Example licensed hostnames are `xgt-prod-0`, `xgt-test-0`, and `xgt-dev-0`; obtain a license covering the names used in your installation. Chart 0.4.0 adds `xgt.hostname` to set the container's licensed hostname while retaining Helm's Deployment. A release name alone does not set this hostname. Use a separate Helm release per independent XGT server, each with its own hostname, settings and storage. Additional releases can disable Mission Control and MongoDB and share the first release's Mission Control. The [test-server guide](openshift_test_server/README.md#optional-add-separate-dev-and-prod-xgt-releases) includes commands.
+Example licensed hostnames are `demo-xgt-prod`, `demo-xgt-test`, and `demo-xgt-dev`; obtain a license covering the names used in your installation. Chart 0.4.0 adds `xgt.hostname` to set the container's licensed hostname while retaining Helm's Deployment. A release name alone does not set this hostname. Use a separate Helm release per independent XGT server, each with its own hostname, settings and storage. Additional releases can disable Mission Control and MongoDB and share the first release's Mission Control. The [test-server guide](openshift_test_server/README.md#optional-add-separate-dev-and-prod-xgt-releases) includes commands.
 
 ## 2. Establish the FIPS and TLS Requirements First
 

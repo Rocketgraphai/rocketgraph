@@ -164,7 +164,7 @@ By default, the chart generates configuration in a ConfigMap, mounts license/TLS
 
 ```yaml
 xgt:
-  hostname: xgt-prod-0
+  hostname: demo-xgt-prod
   files:
     existingClaim: xgt-files
     subPath: xgt-prod
@@ -593,17 +593,17 @@ helm install rocketgraph ./charts/rocketgraph \
 
 For a complete OpenShift LDAP/OAuth walkthrough with YAML and commands, see the [test-server guide](../../doc/openshift_test_server/README.md).
 
-Chart **0.4.0** adds `xgt.hostname` and `missionControl.enabled`. A fixed container hostname supports a hostname-bound license while keeping xGT managed by Helm:
+Chart **0.4.0** adds `xgt.hostname` and `missionControl.enabled`. A fixed container hostname supports a hostname-bound license while keeping xGT managed by Helm. The `demo-xgt-*` hostnames below are examples; replace them with hostnames covered by your license:
 
 ```yaml
 xgt:
   enabled: true
-  hostname: xgt-test-0
+  hostname: demo-xgt-test
   license:
     existingSecret: xgt-license
 ```
 
-The workload remains a one-replica Deployment. Kubernetes generates its pod name, while the operating-system hostname inside the container is `xgt-test-0`, including after pod replacement. This setting does not create a DNS endpoint: clients use the release's Service, such as `rocketgraph-xgt:4367`. Verify the hostname with:
+The workload remains a one-replica Deployment. Kubernetes generates its pod name, while the operating-system hostname inside the container is `demo-xgt-test`, including after pod replacement. This setting does not create a DNS endpoint: clients use the release's Service, such as `rocketgraph-xgt:4367`. Verify the hostname with:
 
 ```bash
 oc -n xgt exec deployment/rocketgraph-xgt -- cat /proc/sys/kernel/hostname
@@ -613,14 +613,14 @@ For three independent servers, install one release per server. Start with the fu
 
 ```bash
 helm upgrade --install rocketgraph ./charts/rocketgraph -n xgt \
-  -f site-values.yaml --set xgt.hostname=xgt-test-0
+  -f site-values.yaml --set xgt.hostname=demo-xgt-test
 
 helm upgrade --install xgt-dev ./charts/rocketgraph -n xgt \
-  -f site-values.yaml --set xgt.hostname=xgt-dev-0 \
+  -f site-values.yaml --set xgt.hostname=demo-xgt-dev \
   --set missionControl.enabled=false --set mongodb.enabled=false
 
 helm upgrade --install xgt-prod ./charts/rocketgraph -n xgt \
-  -f site-values.yaml --set xgt.hostname=xgt-prod-0 \
+  -f site-values.yaml --set xgt.hostname=demo-xgt-prod \
   --set missionControl.enabled=false --set mongodb.enabled=false
 ```
 

@@ -9,7 +9,7 @@ The Python API and Mission Control still call the shared authentication option
 the OpenShift User API to obtain identity and groups. This flow does not use
 OIDC ID tokens or a standard OIDC UserInfo endpoint.
 
-**Deployment:** Helm manages XGT, Mission Control and MongoDB. Set `xgt.hostname: xgt-test-0` for the licensed container hostname. The Kubernetes pod name remains generated. Optional separate releases provide dev and prod XGT servers with their own configuration and storage, sharing Mission Control.
+**Deployment:** Helm manages XGT, Mission Control and MongoDB. Set `xgt.hostname: demo-xgt-test` for the licensed container hostname. The Kubernetes pod name remains generated. Optional separate releases provide dev and prod XGT servers with their own configuration and storage, sharing Mission Control.
 
 **Requires chart 0.4.0 or later; the commands below use the chart in this repository.** Rendering has been checked, and an isolated XGT 2.7.1 FIPS-image release passed license validation, OpenShift token login and a query. Its fixed hostname and a file on its data volume survived pod replacement. The complete installation below has not been deployed to a fresh cluster. The [deployment planning guide](../openshift_fips_deployment.md) covers the architecture and FIPS verification responsibilities.
 
@@ -42,7 +42,7 @@ oc get nodes
 oc get storageclass
 ```
 
-Get a license for `xgt-test-0`, directory access details, and two LDAP test users:
+The `demo-xgt-*` hostnames are examples. Obtain a license covering them, or replace them in the values and commands with hostnames covered by your own license. For the initial server, use `demo-xgt-test` or your licensed replacement. Also obtain directory access details and two LDAP test users:
 
 | User | LDAP memberships | Expected XGT access |
 | --- | --- | --- |
@@ -242,7 +242,7 @@ oc -n xgt-demo get secrets
 
 In `values.yaml`, set the actual OAuth issuer under `xgt.extraConfig.security.oidc` and set `backend.oidc.frontendUrl` to the public Mission Control URL. This URL must match `route.yaml` and the callback registered in step 5.
 
-`xgt.config` contains the group-to-label mappings; `xgt.extraConfig` holds server settings. Keep `xgt.enabled: true` and `xgt.hostname: xgt-test-0`. Helm's `fips.enabled: true` selects the XGT/Mission Control FIPS images and the chart's default Percona MongoDB image; no MongoDB image override is needed. Base XGT/Mission Control tags stay unsuffixed. Use an approved chart revision and review the rendered images before installing or upgrading.
+`xgt.config` contains the group-to-label mappings; `xgt.extraConfig` holds server settings. Keep `xgt.enabled: true` and set `xgt.hostname` to the hostname covered by your license (`demo-xgt-test` in this example). Helm's `fips.enabled: true` selects the XGT/Mission Control FIPS images and the chart's default Percona MongoDB image; no MongoDB image override is needed. Base XGT/Mission Control tags stay unsuffixed. Use an approved chart revision and review the rendered images before installing or upgrading.
 
 ```sh
 helm template rocketgraph ../../charts/rocketgraph \
@@ -258,7 +258,7 @@ oc -n xgt-demo get pods,pvc
 oc -n xgt-demo exec deployment/rocketgraph-xgt -- cat /proc/sys/kernel/hostname
 ```
 
-**Expected:** four ready application pods, bound PVCs, and hostname `xgt-test-0`. XGT uses TLS; MongoDB uses authentication, required TLS and `--tlsFIPSMode`. Check logs and the actual crypto configuration for FIPS acceptance; do not disable verification to pass the test.
+**Expected:** four ready application pods, bound PVCs, and hostname `demo-xgt-test`. XGT uses TLS; MongoDB uses authentication, required TLS and `--tlsFIPSMode`. Check logs and the actual crypto configuration for FIPS acceptance; do not disable verification to pass the test.
 
 All application workloads are managed with Helm. After editing XGT settings or mappings in `values.yaml`, rerun the same `helm upgrade --install` command. The chart's configuration checksum triggers a new XGT pod. External Secret changes may require a rollout restart.
 
@@ -266,25 +266,25 @@ All application workloads are managed with Helm. After editing XGT settings or m
 
 Use one Helm release per XGT server. These are independent servers, not replicas or an HA cluster. Each receives separate configuration, Services and data/log PVCs. The commands below reuse the test settings; add a per-environment values file when settings differ.
 
-First ensure the license covers `xgt-dev-0` and `xgt-prod-0`. XGT TLS certificates must cover each release's Service name. The optional test certificate script includes all three names. For separate production certificates, create separate Secrets and override `xgt.ssl.existingSecret`; include their issuing CAs in Mission Control's `backend-tls` trust bundle. Override `xgt.license.existingSecret` if licenses are separate.
+First ensure the license covers `demo-xgt-dev` and `demo-xgt-prod`. XGT TLS certificates must cover each release's Service name. The optional test certificate script includes all three names. For separate production certificates, create separate Secrets and override `xgt.ssl.existingSecret`; include their issuing CAs in Mission Control's `backend-tls` trust bundle. Override `xgt.license.existingSecret` if licenses are separate.
 
 ```sh
 helm upgrade --install xgt-dev ../../charts/rocketgraph \
   -n xgt-demo -f values.yaml \
   --set missionControl.enabled=false --set mongodb.enabled=false \
-  --set xgt.hostname=xgt-dev-0 --wait --timeout=10m
+  --set xgt.hostname=demo-xgt-dev --wait --timeout=10m
 
 helm upgrade --install xgt-prod ../../charts/rocketgraph \
   -n xgt-demo -f values.yaml \
   --set missionControl.enabled=false --set mongodb.enabled=false \
-  --set xgt.hostname=xgt-prod-0 --wait --timeout=10m
+  --set xgt.hostname=demo-xgt-prod --wait --timeout=10m
 ```
 
 | Helm release | Licensed container hostname | XGT endpoint | Includes Mission Control/MongoDB |
 | --- | --- | --- | --- |
-| `rocketgraph` | `xgt-test-0` | `rocketgraph-xgt:4367` | Yes |
-| `xgt-dev` | `xgt-dev-0` | `xgt-dev-xgt:4367` | No |
-| `xgt-prod` | `xgt-prod-0` | `xgt-prod-xgt:4367` | No |
+| `rocketgraph` | `demo-xgt-test` | `rocketgraph-xgt:4367` | Yes |
+| `xgt-dev` | `demo-xgt-dev` | `xgt-dev-xgt:4367` | No |
+| `xgt-prod` | `demo-xgt-prod` | `xgt-prod-xgt:4367` | No |
 
 `xgt.enabled` stays `true` for all three. The shared Mission Control's `backend.oidc.xgtAllowedHosts` already lists these endpoints. Leave `backend.env.XGT_SERVER_CN` unset so TLS checks each selected endpoint's certificate identity. XGT-only releases still use `backend.oidc.caCertExistingSecret` to mount the OAuth/API CA bundle.
 

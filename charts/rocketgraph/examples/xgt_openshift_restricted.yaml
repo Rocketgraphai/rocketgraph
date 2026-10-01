@@ -10,7 +10,7 @@ openshift:
 fips:
   enabled: true
 xgt:
-  hostname: xgt-test-0
+  hostname: demo-xgt-test
   image:
     tag: 2.7.1
   license:
