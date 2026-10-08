@@ -393,6 +393,53 @@ helm install rocketgraph ./charts/rocketgraph \
 
 Users must select **PKIAuth** as the auth type when logging in for the backend to present the client certificate to xGT.
 
+#### xGT SSL with OpenShift Service Serving Certificates
+
+OpenShift can issue and renew the xGT certificate itself. An annotation on the xGT service makes OpenShift create a `kubernetes.io/tls` secret holding the certificate and key under `tls.crt` and `tls.key`, and an annotated ConfigMap receives the CA that signed it under `service-ca.crt`. The chart reads both directly, so no certificates need to be generated or copied.
+
+1. Create a ConfigMap for OpenShift to fill with the service CA:
+
+```bash
+oc create configmap xgt-service-ca -n <namespace>
+oc annotate configmap xgt-service-ca service.beta.openshift.io/inject-cabundle=true -n <namespace>
+```
+
+1. Install with a values file like the following. The annotation asks OpenShift to create the `xgt-serving` secret, `secretKeys` maps its key names to the files xGT expects, and the backend verifies xGT against the injected CA. The certificate is issued for `<service>.<namespace>.svc`, and the xGT service is named `<release-name>-xgt`, so `XGT_SERVER_CN` must be `<release-name>-xgt.<namespace>.svc`:
+
+```yaml
+openshift:
+  enabled: true
+xgt:
+  service:
+    annotations:
+      service.beta.openshift.io/serving-cert-secret-name: xgt-serving
+  ssl:
+    enabled: true
+    existingSecret: xgt-serving
+    secretKeys:
+      cert: tls.crt
+      key: tls.key
+backend:
+  tls:
+    xgtServerCertConfigMap: xgt-service-ca
+  env:
+    XGT_SERVER_CN: <release-name>-xgt.<namespace>.svc
+```
+
+```bash
+helm install <release-name> ./charts/rocketgraph -n <namespace> -f serving-certs.yaml
+```
+
+The xGT pod waits in `ContainerCreating` until OpenShift has created the secret, which normally takes a few seconds after the service exists.
+
+xGT reads its certificate only at startup. When OpenShift renews the certificate, restart the xGT pod to pick up the new one:
+
+```bash
+oc rollout restart deployment/<release-name>-xgt -n <namespace>
+```
+
+This setup does not support `xgt.ssl.mtls`. xGT reads the CA for client certificates from the same secret as its own certificate, and OpenShift owns that secret. For mTLS, supply all of the xGT certificates yourself as in the previous section.
+
 ### With MongoDB Authentication
 
 The three MongoDB hardening features below — authentication, TLS, and encryption at rest — are explained in depth in the [MongoDB security guide](../../doc/mongodb_security.md), including how auth enforcement is decided, the upgrade path for a data volume that was initialised without auth, and troubleshooting. The sections here cover the chart values and Secrets; consult that guide for the reasoning and failure modes.
