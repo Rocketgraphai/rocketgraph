@@ -119,7 +119,7 @@ For a normal user, use **Users → USER → Groups**, or manage memberships in L
 
 Open the service-account user through its client.
 
-<a href="images/service-account-join-groups.png"><img src="images/service-account-join-groups-framed.svg" alt="Join Group offers existing LDAP groups and an optional automation group." width="640"></a>
+<a href="images/service-account-join-groups.png"><img src="images/service-account-join-groups.png" alt="Join Group offers existing LDAP groups and an optional automation group." width="640"></a>
 
 Choose the group whose xGT labels the automation job needs.
 
