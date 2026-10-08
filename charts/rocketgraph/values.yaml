@@ -298,8 +298,11 @@ xgt:
     existingSecret: ""  # Must have the cert and key under the names in secretKeys
     cert: ""            # Inline server cert PEM
     key: ""             # Inline server key PEM
-    mtls: false         # Require client certs; needs secretKeys.caCert in existingSecret or via caCert
+    mtls: false         # Require client certs; needs a client CA from existingSecret, caCertExistingSecret or caCert
     caCert: ""          # Inline CA cert PEM for validating client certs (ca-chain.cert.pem)
+    # Separate Secret holding the client CA under secretKeys.caCert, for when
+    # existingSecret is managed elsewhere, e.g. by OpenShift.
+    caCertExistingSecret: ""
     # Key names in the Secret, e.g. tls.crt and tls.key for an OpenShift
     # service serving certificate. The chart's own Secret uses them too.
     secretKeys:

@@ -1252,12 +1252,17 @@
             },
             "mtls": {
               "type": "boolean",
-              "description": "Require client certificates; needs secretKeys.caCert in existingSecret or provided via the caCert parameter",
+              "description": "Require client certificates; needs a client CA from existingSecret, caCertExistingSecret or the caCert parameter",
               "default": false
             },
             "caCert": {
               "type": "string",
               "description": "PEM-encoded CA certificate for validating client certificates (ca-chain.cert.pem)",
+              "default": ""
+            },
+            "caCertExistingSecret": {
+              "type": "string",
+              "description": "Name of an existing Secret holding the CA for validating client certificates under secretKeys.caCert, separate from the server certificate's Secret. Requires mtls",
               "default": ""
             },
             "secretKeys": {
@@ -1280,7 +1285,7 @@
                 "caCert": {
                   "type": "string",
                   "minLength": 1,
-                  "description": "Key holding the CA chain used to validate client certificates when mtls is true",
+                  "description": "Key holding the CA chain used to validate client certificates when mtls is true, in caCertExistingSecret if set and otherwise in the xGT TLS Secret",
                   "default": "ca-chain.cert.pem"
                 }
               }

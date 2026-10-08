@@ -438,7 +438,30 @@ xGT reads its certificate only at startup. When OpenShift renews the certificate
 oc rollout restart deployment/<release-name>-xgt -n <namespace>
 ```
 
-This setup does not support `xgt.ssl.mtls`. xGT reads the CA for client certificates from the same secret as its own certificate, and OpenShift owns that secret. For mTLS, supply all of the xGT certificates yourself as in the previous section.
+For mTLS, the backend's client certificate comes from your own CA, since the service CA does not issue client certificates. OpenShift owns the `xgt-serving` secret, so give xGT that CA in a secret of its own, and give the backend its client certificate and key as in the previous section:
+
+```bash
+oc create secret generic xgt-client-ca --from-file=ca-chain.cert.pem=xgt-ca.pem -n <namespace>
+oc create secret generic backend-tls \
+  --from-file=proxy-client-cert.pem=proxy-cert.pem \
+  --from-file=proxy-client-key.pem=proxy-key.pem \
+  -n <namespace>
+```
+
+Then add these to the values file. The backend still verifies xGT against the service CA from `xgtServerCertConfigMap`, so `backend-tls` needs no `xgt-server.pem`:
+
+```yaml
+xgt:
+  ssl:
+    mtls: true
+    caCertExistingSecret: xgt-client-ca
+backend:
+  tls:
+    existingSecret: backend-tls
+    mtls: true
+```
+
+`secretKeys.caCert` names the CA's key in `xgt-client-ca`. As with any xGT mTLS setup, users must select **PKIAuth** when logging in.
 
 ### With MongoDB Authentication
 
@@ -1039,11 +1062,12 @@ The Ingress routes to the frontend service on port 80. The ingress controller te
 | `xgt.ssl.existingSecret`      | Secret with the server cert, key and optionally CA chain, under the names in `secretKeys`     | `""`    |
 | `xgt.ssl.secretKeys.cert`     | Key holding the server cert in the xGT TLS secret (e.g. `tls.crt`)                            | `server.cert.pem` |
 | `xgt.ssl.secretKeys.key`      | Key holding the server private key in the xGT TLS secret (e.g. `tls.key`)                     | `server.key.pem` |
-| `xgt.ssl.secretKeys.caCert`   | Key holding the CA chain for validating client certs when `mtls` is true                      | `ca-chain.cert.pem` |
+| `xgt.ssl.secretKeys.caCert`   | Key holding the CA chain for validating client certs when `mtls` is true, in `caCertExistingSecret` if set | `ca-chain.cert.pem` |
 | `xgt.ssl.cert`                | Inline xGT server cert PEM                                                                    | `""`    |
 | `xgt.ssl.key`                 | Inline xGT server key PEM                                                                     | `""`    |
-| `xgt.ssl.mtls`                | Require client certificates on xGT server (needs `ca-chain.cert.pem` in secret or `caCert`)   | `false` |
+| `xgt.ssl.mtls`                | Require client certificates on xGT server (needs a client CA in the secret, `caCertExistingSecret` or `caCert`) | `false` |
 | `xgt.ssl.caCert`              | Inline CA cert PEM for validating client certs (`ca-chain.cert.pem`)                          | `""`    |
+| `xgt.ssl.caCertExistingSecret` | Separate Secret holding the client CA under `secretKeys.caCert`, for when the server cert's Secret is managed elsewhere | `""` |
 
 ### Backend Environment
 

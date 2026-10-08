@@ -551,6 +551,46 @@ class ServingCertTests(unittest.TestCase):
             'xgtServerCert': 'CA', 'xgtServerCertConfigMap': 'xgt-service-ca'}}},
             fails=True))
 
+    def xgt_tls_sources(self, objects):
+        pod = component(objects, 'Deployment', 'xgt')['spec']['template']['spec']
+        volume = next(v for v in pod['volumes'] if v['name'] == 'xgt-tls')
+        return [source['secret'] for source in volume['projected']['sources']]
+
+    def test_xgt_client_ca_from_separate_secret(self):
+        objects = render({'xgt': {'ssl': {
+            'enabled': True, 'existingSecret': 'xgt-serving', 'mtls': True,
+            'caCertExistingSecret': 'client-ca',
+            'secretKeys': {'cert': 'tls.crt', 'key': 'tls.key', 'caCert': 'ca.crt'}}}})
+        server, client = self.xgt_tls_sources(objects)
+        self.assertEqual(server['name'], 'xgt-serving')
+        self.assertEqual({i['key']: i['path'] for i in server['items']}, {
+            'tls.crt': 'certs/server.cert.pem', 'tls.key': 'private/server.key.pem'})
+        self.assertEqual(client, {'name': 'client-ca', 'items': [
+            {'key': 'ca.crt', 'path': 'certs/ca-chain.cert.pem'}]})
+
+    def test_xgt_client_ca_secret_with_inline_server_cert(self):
+        objects = render({'xgt': {'ssl': {
+            'enabled': True, 'cert': 'CERT', 'key': 'KEY', 'mtls': True,
+            'caCertExistingSecret': 'client-ca'}}})
+        server, client = self.xgt_tls_sources(objects)
+        self.assertEqual(server['name'], 'test-xgt-tls')
+        self.assertEqual(client['name'], 'client-ca')
+        generated = component([o for o in objects if o['kind'] == 'Secret'], 'Secret', 'xgt')
+        self.assertEqual(set(generated['stringData']), {'server.cert.pem', 'server.key.pem'})
+
+    def test_xgt_client_ca_secret_rejected_where_unused_or_duplicated(self):
+        cases = [
+            ({'ssl': {'enabled': True, 'existingSecret': 's', 'caCertExistingSecret': 'ca'}},
+             'only used when'),
+            ({'ssl': {'enabled': True, 'cert': 'C', 'key': 'K', 'mtls': True,
+                      'caCert': 'CA', 'caCertExistingSecret': 'ca'}},
+             'one source for the client CA'),
+            ({'files': {'existingClaim': 'files'}, 'ssl': {'caCertExistingSecret': 'ca'}},
+             'existingClaim supplies license and TLS files')]
+        for xgt, message in cases:
+            with self.subTest(xgt=xgt):
+                self.assertIn(message, render({'xgt': xgt}, fails=True))
+
 
 if __name__ == '__main__':
     unittest.main()

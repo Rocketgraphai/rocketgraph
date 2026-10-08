@@ -222,7 +222,26 @@ spec:
         - name: xgt-log
           persistentVolumeClaim:
             claimName: {{ .Values.xgt.persistence.log.existingClaim | default (printf "%s-xgt-log" .Release.Name) }}
-        {{- if .Values.xgt.ssl.enabled }}
+        {{- if and .Values.xgt.ssl.enabled .Values.xgt.ssl.caCertExistingSecret }}
+        {{- /* Projected so the client CA, kept in a Secret of its own, lands
+             in /conf/ssl beside the server certificate. */}}
+        - name: xgt-tls
+          projected:
+            sources:
+              - secret:
+                  name: {{ include "rocketgraph.xgtTlsSecret" . }}
+                  items:
+                    - key: {{ .Values.xgt.ssl.secretKeys.cert }}
+                      path: certs/server.cert.pem
+                    - key: {{ .Values.xgt.ssl.secretKeys.key }}
+                      path: private/server.key.pem
+                      mode: {{ ternary "0440" "0400" $restricted }}
+              - secret:
+                  name: {{ .Values.xgt.ssl.caCertExistingSecret }}
+                  items:
+                    - key: {{ .Values.xgt.ssl.secretKeys.caCert }}
+                      path: certs/ca-chain.cert.pem
+        {{- else if .Values.xgt.ssl.enabled }}
         - name: xgt-tls
           secret:
             secretName: {{ include "rocketgraph.xgtTlsSecret" . }}
