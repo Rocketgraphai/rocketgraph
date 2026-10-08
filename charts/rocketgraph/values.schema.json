@@ -507,6 +507,17 @@
               "type": "boolean",
               "description": "Enable mTLS for backend connections to xGT. Requires either existingSecret to contain the client cert/key, or for them to be provided inline",
               "default": false
+            },
+            "xgtServerCertConfigMap": {
+              "type": "string",
+              "description": "Name of an existing ConfigMap holding the xGT CA certificate, such as one filled by OpenShift's service.beta.openshift.io/inject-cabundle annotation. Used instead of xgt-server.pem from existingSecret or xgtServerCert",
+              "default": ""
+            },
+            "xgtServerCertConfigMapKey": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Key in xgtServerCertConfigMap that holds the CA certificate",
+              "default": "service-ca.crt"
             }
           }
         },
@@ -1226,7 +1237,7 @@
             },
             "existingSecret": {
               "type": "string",
-              "description": "Name of an existing Secret containing keys 'server.cert.pem' and 'server.key.pem'",
+              "description": "Name of an existing Secret containing the server cert and key under the names in secretKeys",
               "default": ""
             },
             "cert": {
@@ -1241,13 +1252,38 @@
             },
             "mtls": {
               "type": "boolean",
-              "description": "Require client certificates; needs ca-chain.cert.pem in existingSecret or provided via the caCert parameter",
+              "description": "Require client certificates; needs secretKeys.caCert in existingSecret or provided via the caCert parameter",
               "default": false
             },
             "caCert": {
               "type": "string",
               "description": "PEM-encoded CA certificate for validating client certificates (ca-chain.cert.pem)",
               "default": ""
+            },
+            "secretKeys": {
+              "type": "object",
+              "description": "Key names in the xGT TLS Secret, whether existingSecret or the one the chart creates",
+              "additionalProperties": false,
+              "properties": {
+                "cert": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "Key holding the server certificate (e.g. tls.crt)",
+                  "default": "server.cert.pem"
+                },
+                "key": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "Key holding the server private key (e.g. tls.key)",
+                  "default": "server.key.pem"
+                },
+                "caCert": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "Key holding the CA chain used to validate client certificates when mtls is true",
+                  "default": "ca-chain.cert.pem"
+                }
+              }
             }
           }
         },

@@ -114,6 +114,10 @@ backend:
     proxyClientCert: ""
     proxyClientKey: ""
     mtls: false        # Enable mTLS for backend connections to xGT
+    # Existing ConfigMap holding the xGT CA, e.g. one OpenShift fills through the
+    # service.beta.openshift.io/inject-cabundle annotation. Replaces xgt-server.pem.
+    xgtServerCertConfigMap: ""
+    xgtServerCertConfigMapKey: service-ca.crt
   # Site configuration files (inline content)
   siteConfig:
     yml: ""
@@ -291,11 +295,17 @@ xgt:
       existingClaim: ""  # Also overrides /log when files.existingClaim is set.
   ssl:
     enabled: false
-    existingSecret: ""  # Must have keys: server.cert.pem, server.key.pem
+    existingSecret: ""  # Must have the cert and key under the names in secretKeys
     cert: ""            # Inline server cert PEM
     key: ""             # Inline server key PEM
-    mtls: false         # Require client certs; needs ca-chain.cert.pem in existingSecret or via caCert
+    mtls: false         # Require client certs; needs secretKeys.caCert in existingSecret or via caCert
     caCert: ""          # Inline CA cert PEM for validating client certs (ca-chain.cert.pem)
+    # Key names in the Secret, e.g. tls.crt and tls.key for an OpenShift
+    # service serving certificate. The chart's own Secret uses them too.
+    secretKeys:
+      cert: server.cert.pem
+      key: server.key.pem
+      caCert: ca-chain.cert.pem
   license:
     existingSecret: ""  # Must have key: xgtd.lic
     data: ""            # License FILE TEXT, not database data or base64. Prefer existingSecret.

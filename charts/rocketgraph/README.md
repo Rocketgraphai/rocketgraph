@@ -986,8 +986,13 @@ The Ingress routes to the frontend service on port 80. The ingress controller te
 | `backend.tls.proxyClientCert` | Inline proxy client cert PEM                                                                  | `""`    |
 | `backend.tls.proxyClientKey`  | Inline proxy client key PEM                                                                   | `""`    |
 | `backend.tls.mtls`            | Enable mTLS for backend connections to xGT (requires `existingSecret` or inline cert+key)     | `false` |
+| `backend.tls.xgtServerCertConfigMap` | Existing ConfigMap holding the xGT CA, e.g. one filled by OpenShift's `service.beta.openshift.io/inject-cabundle`; used instead of `xgt-server.pem` | `""` |
+| `backend.tls.xgtServerCertConfigMapKey` | Key in `xgtServerCertConfigMap` that holds the CA                                    | `service-ca.crt` |
 | `xgt.ssl.enabled`             | Enable SSL on xGT server                                                                      | `false` |
-| `xgt.ssl.existingSecret`      | Secret with keys: `server.cert.pem`, `server.key.pem`, optionally `ca-chain.cert.pem`         | `""`    |
+| `xgt.ssl.existingSecret`      | Secret with the server cert, key and optionally CA chain, under the names in `secretKeys`     | `""`    |
+| `xgt.ssl.secretKeys.cert`     | Key holding the server cert in the xGT TLS secret (e.g. `tls.crt`)                            | `server.cert.pem` |
+| `xgt.ssl.secretKeys.key`      | Key holding the server private key in the xGT TLS secret (e.g. `tls.key`)                     | `server.key.pem` |
+| `xgt.ssl.secretKeys.caCert`   | Key holding the CA chain for validating client certs when `mtls` is true                      | `ca-chain.cert.pem` |
 | `xgt.ssl.cert`                | Inline xGT server cert PEM                                                                    | `""`    |
 | `xgt.ssl.key`                 | Inline xGT server key PEM                                                                     | `""`    |
 | `xgt.ssl.mtls`                | Require client certificates on xGT server (needs `ca-chain.cert.pem` in secret or `caCert`)   | `false` |

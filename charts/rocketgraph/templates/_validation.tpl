@@ -88,6 +88,9 @@ Call via: {{- include "rocketgraph.validate" . }}
 {{- if and .Values.backend.tls.mtls (not .Values.backend.tls.existingSecret) (not .Values.backend.tls.proxyClientCert) (not .Values.backend.tls.proxyClientKey) }}
   {{- fail "backend.tls.mtls is true but no existingSecret or inline proxyClientCert/proxyClientKey provided" }}
 {{- end }}
+{{- if and .Values.backend.tls.xgtServerCertConfigMap .Values.backend.tls.xgtServerCert }}
+  {{- fail "backend.tls.xgtServerCert is ignored when xgtServerCertConfigMap is set — set only one source for the xGT CA" }}
+{{- end }}
 
 {{- end }}
 

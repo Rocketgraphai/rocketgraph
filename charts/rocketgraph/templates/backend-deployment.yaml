@@ -189,10 +189,15 @@ spec:
                least one condition holds — a bare "volumeMounts:" renders
                null and fails strict schema validation. Keep this condition
                the union of the entry conditions below. */}}
-          {{- $hasMounts := or .Values.backend.tls.existingSecret .Values.backend.tls.xgtServerCert .Values.backend.tls.mtls .Values.backend.odbc.enabled .Values.backend.iaccess.enabled .Values.backend.siteConfig.yml .Values.backend.siteConfig.py .Values.backend.oidc.caCert .Values.backend.oidc.caCertExistingSecret (and .Values.mongodb.tls.enabled (or .Values.mongodb.tls.caCert .Values.mongodb.tls.existingSecret)) }}
+          {{- $hasMounts := or .Values.backend.tls.existingSecret .Values.backend.tls.xgtServerCert .Values.backend.tls.xgtServerCertConfigMap .Values.backend.tls.mtls .Values.backend.odbc.enabled .Values.backend.iaccess.enabled .Values.backend.siteConfig.yml .Values.backend.siteConfig.py .Values.backend.oidc.caCert .Values.backend.oidc.caCertExistingSecret (and .Values.mongodb.tls.enabled (or .Values.mongodb.tls.caCert .Values.mongodb.tls.existingSecret)) }}
           {{- if $hasMounts }}
           volumeMounts:
-            {{- if or .Values.backend.tls.existingSecret .Values.backend.tls.xgtServerCert }}
+            {{- if .Values.backend.tls.xgtServerCertConfigMap }}
+            - name: xgt-server-ca
+              mountPath: /etc/ssl/certs/xgt-server.pem
+              subPath: xgt-server.pem
+              readOnly: true
+            {{- else if or .Values.backend.tls.existingSecret .Values.backend.tls.xgtServerCert }}
             - name: tls-certs
               mountPath: /etc/ssl/certs/xgt-server.pem
               subPath: xgt-server.pem
@@ -265,13 +270,21 @@ spec:
       restartPolicy: Always
       {{- /* Same rationale as volumeMounts above: all entries are
            conditional, so gate the key on the union of their conditions. */}}
-      {{- $hasVolumes := or .Values.backend.tls.existingSecret .Values.backend.tls.xgtServerCert .Values.backend.tls.proxyClientCert .Values.backend.tls.proxyClientKey .Values.backend.odbc.enabled .Values.backend.iaccess.enabled .Values.backend.siteConfig.yml .Values.backend.siteConfig.py .Values.backend.oidc.caCert .Values.backend.oidc.caCertExistingSecret (and .Values.mongodb.tls.enabled (or .Values.mongodb.tls.caCert .Values.mongodb.tls.existingSecret)) }}
+      {{- $hasVolumes := or .Values.backend.tls.existingSecret .Values.backend.tls.xgtServerCert .Values.backend.tls.xgtServerCertConfigMap .Values.backend.tls.proxyClientCert .Values.backend.tls.proxyClientKey .Values.backend.odbc.enabled .Values.backend.iaccess.enabled .Values.backend.siteConfig.yml .Values.backend.siteConfig.py .Values.backend.oidc.caCert .Values.backend.oidc.caCertExistingSecret (and .Values.mongodb.tls.enabled (or .Values.mongodb.tls.caCert .Values.mongodb.tls.existingSecret)) }}
       {{- if $hasVolumes }}
       volumes:
         {{- if or .Values.backend.tls.existingSecret .Values.backend.tls.xgtServerCert .Values.backend.tls.proxyClientCert .Values.backend.tls.proxyClientKey }}
         - name: tls-certs
           secret:
             secretName: {{ include "rocketgraph.backendTlsSecret" . }}
+        {{- end }}
+        {{- with .Values.backend.tls.xgtServerCertConfigMap }}
+        - name: xgt-server-ca
+          configMap:
+            name: {{ . }}
+            items:
+              - key: {{ $.Values.backend.tls.xgtServerCertConfigMapKey }}
+                path: xgt-server.pem
         {{- end }}
         {{- if .Values.backend.odbc.enabled }}
         - name: odbc-drivers

@@ -487,5 +487,70 @@ class RestrictedStackTests(unittest.TestCase):
         self.assertTrue(render(values))
 
 
+class ServingCertTests(unittest.TestCase):
+    """Certificates whose Secret and ConfigMap key names the chart does not choose,
+    such as OpenShift service serving certificates."""
+
+    def xgt_tls(self, objects):
+        pod = component(objects, 'Deployment', 'xgt')['spec']['template']['spec']
+        return next(v for v in pod['volumes'] if v['name'] == 'xgt-tls')['secret']
+
+    def backend_pod(self, objects):
+        return component(objects, 'Deployment', 'backend')['spec']['template']['spec']
+
+    def test_xgt_existing_secret_with_custom_key_names(self):
+        objects = render({'xgt': {'ssl': {
+            'enabled': True, 'existingSecret': 'xgt-serving', 'mtls': True,
+            'secretKeys': {'cert': 'tls.crt', 'key': 'tls.key', 'caCert': 'ca.crt'}}}})
+        secret = self.xgt_tls(objects)
+        self.assertEqual(secret['secretName'], 'xgt-serving')
+        self.assertEqual({i['key']: i['path'] for i in secret['items']}, {
+            'tls.crt': 'certs/server.cert.pem',
+            'tls.key': 'private/server.key.pem',
+            'ca.crt': 'certs/ca-chain.cert.pem'})
+
+    def test_xgt_generated_secret_uses_the_same_key_names(self):
+        objects = render({'xgt': {'ssl': {
+            'enabled': True, 'cert': 'CERT', 'key': 'KEY',
+            'secretKeys': {'cert': 'tls.crt', 'key': 'tls.key'}}}})
+        generated = component([o for o in objects if o['kind'] == 'Secret'], 'Secret', 'xgt')
+        self.assertEqual(generated['stringData'], {'tls.crt': 'CERT', 'tls.key': 'KEY'})
+        self.assertEqual({i['key'] for i in self.xgt_tls(objects)['items']},
+                         {'tls.crt', 'tls.key'})
+
+    def test_backend_reads_xgt_ca_from_configmap(self):
+        objects = render({'backend': {'tls': {
+            'xgtServerCertConfigMap': 'xgt-service-ca'}}})
+        pod = self.backend_pod(objects)
+        volume = next(v for v in pod['volumes'] if v['name'] == 'xgt-server-ca')
+        self.assertEqual(volume['configMap'], {
+            'name': 'xgt-service-ca',
+            'items': [{'key': 'service-ca.crt', 'path': 'xgt-server.pem'}]})
+        mounts = [m for m in pod['containers'][0]['volumeMounts']
+                  if m['mountPath'] == '/etc/ssl/certs/xgt-server.pem']
+        self.assertEqual(mounts, [{'name': 'xgt-server-ca',
+                                   'mountPath': '/etc/ssl/certs/xgt-server.pem',
+                                   'subPath': 'xgt-server.pem', 'readOnly': True}])
+        self.assertNotIn('tls-certs', {v['name'] for v in pod['volumes']})
+
+    def test_backend_configmap_ca_with_client_cert_from_secret(self):
+        objects = render({'backend': {'tls': {
+            'existingSecret': 'backend-client', 'mtls': True,
+            'xgtServerCertConfigMap': 'xgt-service-ca',
+            'xgtServerCertConfigMapKey': 'ca-bundle.crt'}}})
+        pod = self.backend_pod(objects)
+        mounts = {m['mountPath']: m['name'] for m in pod['containers'][0]['volumeMounts']}
+        self.assertEqual(mounts['/etc/ssl/certs/xgt-server.pem'], 'xgt-server-ca')
+        self.assertEqual(mounts['/etc/ssl/certs/proxy-client-cert.pem'], 'tls-certs')
+        self.assertEqual(mounts['/etc/ssl/private/proxy-client-key.pem'], 'tls-certs')
+        volume = next(v for v in pod['volumes'] if v['name'] == 'xgt-server-ca')
+        self.assertEqual(volume['configMap']['items'][0]['key'], 'ca-bundle.crt')
+
+    def test_backend_rejects_two_xgt_ca_sources(self):
+        self.assertIn('xgtServerCertConfigMap', render({'backend': {'tls': {
+            'xgtServerCert': 'CA', 'xgtServerCertConfigMap': 'xgt-service-ca'}}},
+            fails=True))
+
+
 if __name__ == '__main__':
     unittest.main()

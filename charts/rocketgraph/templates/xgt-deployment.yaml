@@ -227,13 +227,13 @@ spec:
           secret:
             secretName: {{ include "rocketgraph.xgtTlsSecret" . }}
             items:
-              - key: server.cert.pem
+              - key: {{ .Values.xgt.ssl.secretKeys.cert }}
                 path: certs/server.cert.pem
-              - key: server.key.pem
+              - key: {{ .Values.xgt.ssl.secretKeys.key }}
                 path: private/server.key.pem
                 mode: {{ ternary "0440" "0400" $restricted }}
               {{- if and .Values.xgt.ssl.mtls (or .Values.xgt.ssl.caCert .Values.xgt.ssl.existingSecret) }}
-              - key: ca-chain.cert.pem
+              - key: {{ .Values.xgt.ssl.secretKeys.caCert }}
                 path: certs/ca-chain.cert.pem
               {{- end }}
         {{- end }}
