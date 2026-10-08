@@ -1,0 +1,18 @@
+# Simplest CA setup for Keycloak using a private company CA.
+# Stock xGT/MC images do not include your company's private CA.
+# Skip only if their application trust stores already trust Keycloak HTTPS.
+# Requires Rocketgraph chart 0.5.0.
+# Existing ConfigMap/files PVC: set ca_cert in the mounted xgtd.conf;
+# omit keycloak_values.yaml from the Helm command and keep this overlay.
+# First create Secret keycloak-ca with key oidc-ca.pem in the release namespace.
+# Apply after the existing deployment values and keycloak_values.yaml.
+# This mounts the public CA bundle in xGT and the Mission Control backend.
+xgt:
+  oidc:
+    caCertExistingSecret: keycloak-ca
+# Omit this backend section when Mission Control is disabled.
+backend:
+  oidc:
+    caCert: ""
+    caCertExistingSecret: keycloak-ca
+    tlsVerify: /etc/ssl/certs/oidc-ca.pem

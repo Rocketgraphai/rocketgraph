@@ -1,0 +1,27 @@
+# Use only when trusted-ca-bundle includes the CA for the Keycloak endpoint.
+# Apply after the deployment values and keycloak_values.yaml.
+# Existing config/PVC: remove extraConfig and edit ca_cert in the mounted file.
+xgt:
+  oidc:
+    caCert: ""
+    caCertExistingSecret: ""
+  extraConfig:
+    security.oidc:
+      ca_cert: /etc/keycloak-ca/ca-bundle.crt
+  extraVolumes:
+    - name: keycloak-trusted-ca
+      configMap:
+        name: trusted-ca-bundle
+        items:
+          - key: ca-bundle.crt
+            path: ca-bundle.crt
+  extraVolumeMounts:
+    - name: keycloak-trusted-ca
+      mountPath: /etc/keycloak-ca
+      readOnly: true
+backend:
+  oidc:
+    caCert: ""
+    caCertExistingSecret: ""
+    # Mission Control also requires backend_trusted_ca_patch.yaml.
+    tlsVerify: /etc/keycloak-ca/ca-bundle.crt

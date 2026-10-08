@@ -1,0 +1,16 @@
+# Replace host and Service name. The hostname must be covered by the ingress
+# certificate, or the administrator must configure a matching Route certificate.
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: mission-control
+spec:
+  host: mc.example.com
+  to:
+    kind: Service
+    name: YOUR_RELEASE-frontend
+  port:
+    targetPort: http
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect

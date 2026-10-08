@@ -1,0 +1,19 @@
+# Merge with the release's existing values, keeping xGT OIDC, mappings,
+# image/FIPS/SCC settings, license, hostname and storage configuration.
+missionControl:
+  enabled: true
+frontend:
+  tls:
+    external: true  # HTTPS terminates at the OpenShift edge Route.
+backend:
+  env:
+    XGT_AUTH_TYPES: "['OidcAuth']"
+    MC_DEFAULT_XGT_PORT: "4367"
+  oidc:
+    clientId: mission-control
+    existingSecret: mission-control-oidc
+    # Replace with the public URL; also register its callback in Keycloak.
+    frontendUrl: https://mc.example.com
+mongodb:
+  # For an external MongoDB, set false and retain its URI/Secret settings.
+  enabled: true

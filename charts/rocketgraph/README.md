@@ -758,6 +758,8 @@ See the [OIDC configuration guide](../../doc/oidc_configuration.md) for how the 
 
 #### Keycloak
 
+For screenshots, token mappers, Python login scripts and optional LDAP/CA setup, follow [Keycloak Setup for xGT](../../doc/keycloak_setup/README.md). Its Helm examples require chart **0.5.0**; the [Mission Control page](../../doc/keycloak_setup/mission_control.md) includes the client registration, Secret, values and Route manifests.
+
 Register a confidential client named `mission-control` with Standard flow enabled and callback `https://mc.example.com/api/login/oidc/callback`. Store its secret in `mission-control-oidc` under key `MC_OIDC_CLIENT_SECRET`. Keep the Python browser client `xgtd-client` public with PKCE `S256` and callback `http://127.0.0.1:8765/callback`. Mission Control 2.7.0 does not send PKCE, so do not require it on the confidential client.
 
 ```yaml

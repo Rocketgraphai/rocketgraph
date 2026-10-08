@@ -1,0 +1,31 @@
+# Merge into the deployment's existing values; keep its license, hostname,
+# images, storage and TLS settings. Update existing mounted config files instead
+# if xgt.config.existingConfigMap or a files PVC supplies the configuration.
+xgt:
+  config:
+    # Reuse your existing groups and labels; these names are examples.
+    # The rocketgraph-automation group and automation label are optional.
+    grouplabelCsv: |
+      group,label
+      xgtd,xgtadmin
+      rocketgraph-ldap-admins,xgtadmin
+      rocketgraph-ldap-users,data-users
+      rocketgraph-automation,automation
+    labelCsv: |
+      label
+      xgtadmin
+      data-users
+      automation
+  extraConfig:
+    security.oidc:
+      issuer: https://keycloak.example.com/realms/rocketgraph
+      # Default client for normal-user browser login; this is not a username.
+      # Omit client_id for automation only; Python supplies xgt-automation.
+      client_id: xgt-browser
+      audience: xgt
+      validation_mode: jwt
+      username_claim: preferred_username
+      groups_claim: groups
+      scopes: openid profile email
+      # If xGT lacks CA trust, see the HTTPS trust page: use keycloak_ca_values.yaml
+      # or the OpenShift injected ConfigMap alternative openshift_ca_values.yaml.

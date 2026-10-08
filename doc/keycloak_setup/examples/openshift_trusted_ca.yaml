@@ -1,0 +1,8 @@
+# Optional: ask OpenShift to populate the cluster's merged trusted CA bundle.
+# Use a dedicated empty ConfigMap in the xGT namespace; OpenShift owns its data.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: trusted-ca-bundle
+  labels:
+    config.openshift.io/inject-trusted-cabundle: "true"
