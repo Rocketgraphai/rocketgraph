@@ -463,6 +463,41 @@ backend:
 
 `secretKeys.caCert` names the CA's key in `xgt-client-ca`. As with any xGT mTLS setup, users must select **PKIAuth** when logging in.
 
+##### Connecting from Outside the Cluster
+
+Python scripts using the `xgt` client can connect to this server from outside the cluster.
+
+1. Expose xGT. The chart creates its service as `ClusterIP`, which is reachable only inside the cluster. Set `xgt.service.type` to `LoadBalancer` or `NodePort`, and connect to that address.
+
+1. Give each client machine the service CA, which signed xGT's certificate. Plain SSL needs no private key on the client. When OpenShift replaces its service CA, clients need the new copy:
+
+```bash
+oc get configmap xgt-service-ca -n <namespace> -o jsonpath='{.data.service-ca\.crt}' > service-ca.crt
+```
+
+1. Connect with SSL, setting `ssl_server_cn` to the name on the certificate. It defaults to the host connected to, and the certificate covers only the service's in-cluster name, not the external address:
+
+```python
+import xgt
+
+conn = xgt.Connection(
+  host = "<external address>", port = 4367,
+  flags = { "ssl": True,
+            "ssl_server_cert": "service-ca.crt",
+            "ssl_server_cn": "<release-name>-xgt.<namespace>.svc" },
+  auth = xgt.BasicAuth("<user>", "<password>"))
+```
+
+With mTLS, each client also needs its own certificate and key, signed by the CA in `xgt-client-ca`. Keep the same `flags` and authenticate with the certificate:
+
+```python
+auth = xgt.PKIAuth(ssl_server_cert = "service-ca.crt",
+                   ssl_client_cert = "client.cert.pem",
+                   ssl_client_key = "client.key.pem")
+```
+
+The `Connection` and `PKIAuth` documentation describes their other SSL options.
+
 ### With MongoDB Authentication
 
 The three MongoDB hardening features below — authentication, TLS, and encryption at rest — are explained in depth in the [MongoDB security guide](../../doc/mongodb_security.md), including how auth enforcement is decided, the upgrade path for a data volume that was initialised without auth, and troubleshooting. The sections here cover the chart values and Secrets; consult that guide for the reasoning and failure modes.
