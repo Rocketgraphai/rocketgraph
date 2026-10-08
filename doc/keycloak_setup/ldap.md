@@ -34,7 +34,7 @@ Open the provider's **Mappers → Add mapper** and select `group-ldap-mapper`. T
 | User Groups Retrieve Strategy | `LOAD_GROUPS_BY_MEMBER_ATTRIBUTE` |
 | Preserve Group Inheritance | Off for flat group names |
 
-<a href="images/ldap-group-mapper.png"><img src="images/ldap-group-mapper.png" alt="LDAP group mapper with groupOfNames, member DN and read-only mode." width="520"></a>
+<a href="images/ldap-group-mapper.png"><img src="images/ldap-group-mapper-framed.svg" alt="LDAP group mapper with groupOfNames, member DN and read-only mode." width="520"></a>
 
 The screenshot uses a test directory DN; substitute your own directory's DN.
 

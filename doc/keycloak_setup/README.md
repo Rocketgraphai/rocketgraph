@@ -42,13 +42,13 @@ Keep the default `profile` and `email` client scopes. Client IDs identify applic
 
 The public `xgt-browser` client opens a browser for a person to sign in. Require PKCE with method `S256`; older Keycloak versions expose this under Advanced settings as **PKCE Code Challenge Method**.
 
-<a href="images/browser-capabilities.png"><img src="images/browser-capabilities.png" alt="Public browser client with Standard flow and S256 PKCE enabled." width="640"></a>
+<a href="images/browser-capabilities.png"><img src="images/browser-capabilities-framed.svg" alt="Public browser client with Standard flow and S256 PKCE enabled." width="640"></a>
 
 Capability settings for normal-user Python login.
 
 Register the callback exactly in **Valid redirect URIs**, without a trailing slash. Change it if you use a different `callback_port` in Python.
 
-<a href="images/browser-callback.png"><img src="images/browser-callback.png" alt="Valid redirect URI http://127.0.0.1:8765/callback." width="500"></a>
+<a href="images/browser-callback.png"><img src="images/browser-callback-framed.svg" alt="Valid redirect URI http://127.0.0.1:8765/callback." width="500"></a>
 
 The default Python loopback callback.
 
@@ -56,13 +56,13 @@ The default Python loopback callback.
 
 The confidential `xgt-automation` client obtains tokens without a browser. Enable **Client authentication** and **Service account roles**. Leave the other authentication flows off.
 
-<a href="images/automation-capabilities.png"><img src="images/automation-capabilities.png" alt="Automation client with client authentication and service accounts on." width="640"></a>
+<a href="images/automation-capabilities.png"><img src="images/automation-capabilities-framed.svg" alt="Automation client with client authentication and service accounts on." width="640"></a>
 
 Capability settings for automated jobs.
 
 Open **Credentials** and copy this client's generated **Client Secret**. The Python job uses it to obtain a token. It is not the Keycloak administrator password, and xGT does not need it for JWT validation.
 
-<a href="images/automation-credentials.png"><img src="images/automation-credentials.png" alt="Credentials tab showing the masked automation client secret." width="640"></a>
+<a href="images/automation-credentials.png"><img src="images/automation-credentials-framed.svg" alt="Credentials tab showing the masked automation client secret." width="640"></a>
 
 Where to obtain the automation client's secret.
 
@@ -83,7 +83,7 @@ Do this on **each client that issues tokens for xGT**, including Mission Control
 
 `xgt` is the expected audience, not another client that must be registered. It must match `security.oidc.audience` on the server.
 
-<a href="images/audience-mapper.png"><img src="images/audience-mapper.png" alt="Audience mapper adding xgt as a custom audience to the access token." width="640"></a>
+<a href="images/audience-mapper.png"><img src="images/audience-mapper-framed.svg" alt="Audience mapper adding xgt as a custom audience to the access token." width="640"></a>
 
 The screenshot also enables introspection; JWT validation uses the access token.
 
@@ -99,7 +99,7 @@ The screenshot also enables introspection; JWT validation uses the access token.
 | Add to ID token / Add to userinfo | Not required for JWT validation |
 | Add to token introspection | Needed only for introspection validation |
 
-<a href="images/groups-mapper.png"><img src="images/groups-mapper.png" alt="Group Membership mapper with groups and inclusion in access tokens." width="640"></a>
+<a href="images/groups-mapper.png"><img src="images/groups-mapper-framed.svg" alt="Group Membership mapper with groups and inclusion in access tokens." width="640"></a>
 
 The screenshot enables additional outputs; JWT validation needs the groups in the access token.
 
@@ -115,11 +115,11 @@ For a normal user, use **Users → USER → Groups**, or manage memberships in L
 1.  Click the linked username **service-account-xgt-automation**.
 1.  Open **Groups → Join Group**, select the existing group, and click **Join**.
 
-<a href="images/service-account-link.png"><img src="images/service-account-link.png" alt="Service account roles tab linking to service-account-xgt-automation." width="640"></a>
+<a href="images/service-account-link.png"><img src="images/service-account-link-framed.svg" alt="Service account roles tab linking to service-account-xgt-automation." width="640"></a>
 
 Open the service-account user through its client.
 
-<a href="images/service-account-join-groups.png"><img src="images/service-account-join-groups.png" alt="Join Group offers existing LDAP groups and an optional automation group." width="640"></a>
+<a href="images/service-account-join-groups.png"><img src="images/service-account-join-groups-framed.svg" alt="Join Group offers existing LDAP groups and an optional automation group." width="640"></a>
 
 Choose the group whose xGT labels the automation job needs.
 
