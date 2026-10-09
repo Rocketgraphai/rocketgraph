@@ -49,12 +49,18 @@ frontend:
     failureThreshold: 3
   # TLS certificates — provide either existingSecret OR inline cert data
   tls:
-    existingSecret: ""  # Must have keys: public.pem, private.pem (optional: chain.pem for mTLS)
+    existingSecret: ""  # Certificate keys are selected by secretKeys
     publicCert: ""      # Plain-text PEM content (auto base64-encoded by k8s)
     privateKey: ""
     certChain: ""       # Inline CA chain PEM for validating browser client certs
-    mtls: false         # Enable browser mTLS; mounts chain.pem from existingSecret or certChain
+    mtls: false         # Enable browser mTLS; client CA key selected by secretKeys.caCert
     external: false     # TLS terminated upstream (Ingress TLS / edge route); marks session cookies Secure
+    # Source keys in an existing or chart-generated TLS Secret.
+    # Use cert: tls.crt and key: tls.key for a Kubernetes TLS Secret.
+    secretKeys:
+      cert: public.pem
+      key: private.pem
+      caCert: chain.pem
 
 backend:
   image:
@@ -109,11 +115,22 @@ backend:
     MC_SSL_PORT: ""  # Frontend HTTPS port (defaults to frontend.service.httpsPort)
   # TLS certificates
   tls:
-    existingSecret: ""  # Must have key: xgt-server.pem (optional: proxy-client-cert.pem, proxy-client-key.pem)
+    existingSecret: ""  # Certificate keys are selected by secretKeys
     xgtServerCert: ""
     proxyClientCert: ""
     proxyClientKey: ""
     mtls: false        # Enable mTLS for backend connections to xGT
+    # Existing ConfigMap holding the xGT CA, e.g. one OpenShift fills through the
+    # service.beta.openshift.io/inject-cabundle annotation. Replaces xgt-server.pem.
+    xgtServerCertConfigMap: ""
+    xgtServerCertConfigMapKey: service-ca.crt
+    # Source keys in an existing or chart-generated TLS Secret.
+    # cert/key are this backend's mTLS client credentials;
+    # caCert is the CA used to verify XGT (unless supplied by the ConfigMap).
+    secretKeys:
+      cert: proxy-client-cert.pem
+      key: proxy-client-key.pem
+      caCert: xgt-server.pem
   # Site configuration files (inline content)
   siteConfig:
     yml: ""
@@ -123,14 +140,19 @@ backend:
     issuer: ""            # e.g. https://idp.example.com/realms/xgt
     clientId: ""
     clientSecret: ""      # inline (creates a Secret); use existingSecret in production
-    existingSecret: ""    # existing Secret with key: MC_OIDC_CLIENT_SECRET
+    existingSecret: ""    # Client secret key is selected by secretKeys.clientSecret
     scopes: ""            # e.g. "openid profile email"
     frontendUrl: ""       # e.g. https://mc.example.com
     redirectUri: ""       # e.g. https://mc.example.com/api/login/oidc/callback
     allowedOrigins: ""
     tlsVerify: ""         # "true" or "false"; leave empty to use default
     caCert: ""            # inline CA PEM for OIDC provider TLS (creates a Secret)
-    caCertExistingSecret: ""  # existing Secret with key: oidc-ca.pem
+    caCertExistingSecret: ""  # CA bundle key is selected by secretKeys.caCert
+    # Source keys for existing and chart-generated Secrets. Container file paths
+    # and the MC_OIDC_CLIENT_SECRET environment variable remain unchanged.
+    secretKeys:
+      clientSecret: MC_OIDC_CLIENT_SECRET
+      caCert: oidc-ca.pem
     # Allowlist of xGT host:port pairs the backend may connect to (SSRF prevention).
     # Defaults to the internal xGT service when xgt.enabled=true.
     # Set explicitly when using an external xGT (e.g. "xgt.myns.svc.cluster.local:4367").
@@ -291,14 +313,32 @@ xgt:
       existingClaim: ""  # Also overrides /log when files.existingClaim is set.
   ssl:
     enabled: false
-    existingSecret: ""  # Must have keys: server.cert.pem, server.key.pem
+    existingSecret: ""  # Must have the cert and key under the names in secretKeys
     cert: ""            # Inline server cert PEM
     key: ""             # Inline server key PEM
-    mtls: false         # Require client certs; needs ca-chain.cert.pem in existingSecret or via caCert
+    mtls: false         # Require client certs; CA from caCertExistingSecret, existingSecret or caCert
     caCert: ""          # Inline CA cert PEM for validating client certs (ca-chain.cert.pem)
+    # Optional separate Secret holding the mTLS client CA. The key is
+    # secretKeys.caCert. Supports OpenShift-generated server certificates.
+    caCertExistingSecret: ""
+    # Key names in the Secret, e.g. tls.crt and tls.key for an OpenShift
+    # service serving certificate. The chart's own Secret uses them too.
+    secretKeys:
+      cert: server.cert.pem
+      key: server.key.pem
+      caCert: ca-chain.cert.pem
   license:
-    existingSecret: ""  # Must have key: xgtd.lic
+    existingSecret: ""  # License file key is selected by secretKey
+    secretKey: xgtd.lic  # Also used for inline data; mounted as /license/xgtd.lic
     data: ""            # License FILE TEXT, not database data or base64. Prefer existingSecret.
+  # CA trust for xGT's HTTPS requests to its OIDC issuer.
+  # If no source is set here, legacy backend.oidc CA settings still apply to xGT.
+  # Mission Control uses backend.oidc for its own CA settings.
+  oidc:
+    caCert: ""                # Inline PEM bundle; creates an xGT CA Secret
+    caCertExistingSecret: ""  # Existing Secret; preferred over inline caCert
+    secretKeys:
+      caCert: oidc-ca.pem      # Mounted at /etc/ssl/certs/oidc-ca.pem
   # LDAP authentication via SSSD
   ldap:
     enabled: false

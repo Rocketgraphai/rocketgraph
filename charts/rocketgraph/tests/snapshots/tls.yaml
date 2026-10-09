@@ -5,7 +5,7 @@ kind: NetworkPolicy
 metadata:
   name: test-release-frontend
   labels:
-    helm.sh/chart: rocketgraph-0.4.0
+    helm.sh/chart: rocketgraph-0.5.0
     app.kubernetes.io/name: rocketgraph
     app.kubernetes.io/version: "2.7.0"
     app.kubernetes.io/managed-by: Helm
@@ -31,7 +31,7 @@ kind: NetworkPolicy
 metadata:
   name: test-release-backend
   labels:
-    helm.sh/chart: rocketgraph-0.4.0
+    helm.sh/chart: rocketgraph-0.5.0
     app.kubernetes.io/name: rocketgraph
     app.kubernetes.io/version: "2.7.0"
     app.kubernetes.io/managed-by: Helm
@@ -60,7 +60,7 @@ kind: NetworkPolicy
 metadata:
   name: test-release-xgt
   labels:
-    helm.sh/chart: rocketgraph-0.4.0
+    helm.sh/chart: rocketgraph-0.5.0
     app.kubernetes.io/name: rocketgraph
     app.kubernetes.io/version: "2.7.0"
     app.kubernetes.io/managed-by: Helm
@@ -84,7 +84,7 @@ kind: NetworkPolicy
 metadata:
   name: test-release-mongodb
   labels:
-    helm.sh/chart: rocketgraph-0.4.0
+    helm.sh/chart: rocketgraph-0.5.0
     app.kubernetes.io/name: rocketgraph
     app.kubernetes.io/version: "2.7.0"
     app.kubernetes.io/managed-by: Helm
@@ -121,16 +121,16 @@ metadata:
   name: test-release-backend-tls
   labels:
     app: backend
-    helm.sh/chart: rocketgraph-0.4.0
+    helm.sh/chart: rocketgraph-0.5.0
     app.kubernetes.io/name: rocketgraph
     app.kubernetes.io/version: "2.7.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/instance: test-release
 type: Opaque
 stringData:
-  xgt-server.pem: "test-ca"
-  proxy-client-cert.pem: "test-client-cert"
-  proxy-client-key.pem: "test-client-key"
+  "xgt-server.pem": "test-ca"
+  "proxy-client-cert.pem": "test-client-cert"
+  "proxy-client-key.pem": "test-client-key"
 
 ---
 # Source: rocketgraph/templates/frontend-tls-secret.yaml
@@ -140,15 +140,15 @@ metadata:
   name: test-release-frontend-tls
   labels:
     app: frontend
-    helm.sh/chart: rocketgraph-0.4.0
+    helm.sh/chart: rocketgraph-0.5.0
     app.kubernetes.io/name: rocketgraph
     app.kubernetes.io/version: "2.7.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/instance: test-release
 type: Opaque
 stringData:
-  public.pem: "test-cert"
-  private.pem: "test-key"
+  "public.pem": "test-cert"
+  "private.pem": "test-key"
 
 ---
 # Source: rocketgraph/templates/xgt-tls-secret.yaml
@@ -158,15 +158,15 @@ metadata:
   name: test-release-xgt-tls
   labels:
     app: xgt
-    helm.sh/chart: rocketgraph-0.4.0
+    helm.sh/chart: rocketgraph-0.5.0
     app.kubernetes.io/name: rocketgraph
     app.kubernetes.io/version: "2.7.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/instance: test-release
 type: Opaque
 stringData:
-  server.cert.pem: "test-xgt-cert"
-  server.key.pem: "test-xgt-key"
+  "server.cert.pem": "test-xgt-cert"
+  "server.key.pem": "test-xgt-key"
 
 ---
 # Source: rocketgraph/templates/xgt-configmap.yaml
@@ -176,7 +176,7 @@ metadata:
   name: test-release-xgt-config
   labels:
     app: xgt
-    helm.sh/chart: rocketgraph-0.4.0
+    helm.sh/chart: rocketgraph-0.5.0
     app.kubernetes.io/name: rocketgraph
     app.kubernetes.io/version: "2.7.0"
     app.kubernetes.io/managed-by: Helm
@@ -232,7 +232,7 @@ metadata:
   name: test-release-mongodb-data
   labels:
     app: mongodb
-    helm.sh/chart: rocketgraph-0.4.0
+    helm.sh/chart: rocketgraph-0.5.0
     app.kubernetes.io/name: rocketgraph
     app.kubernetes.io/version: "2.7.0"
     app.kubernetes.io/managed-by: Helm
@@ -252,7 +252,7 @@ metadata:
   name: test-release-xgt-data
   labels:
     app: xgt
-    helm.sh/chart: rocketgraph-0.4.0
+    helm.sh/chart: rocketgraph-0.5.0
     app.kubernetes.io/name: rocketgraph
     app.kubernetes.io/version: "2.7.0"
     app.kubernetes.io/managed-by: Helm
@@ -272,7 +272,7 @@ metadata:
   name: test-release-xgt-log
   labels:
     app: xgt
-    helm.sh/chart: rocketgraph-0.4.0
+    helm.sh/chart: rocketgraph-0.5.0
     app.kubernetes.io/name: rocketgraph
     app.kubernetes.io/version: "2.7.0"
     app.kubernetes.io/managed-by: Helm
@@ -292,7 +292,7 @@ metadata:
   name: test-release-backend
   labels:
     app: backend
-    helm.sh/chart: rocketgraph-0.4.0
+    helm.sh/chart: rocketgraph-0.5.0
     app.kubernetes.io/name: rocketgraph
     app.kubernetes.io/version: "2.7.0"
     app.kubernetes.io/managed-by: Helm
@@ -316,7 +316,7 @@ metadata:
   name: test-release-frontend
   labels:
     app: frontend
-    helm.sh/chart: rocketgraph-0.4.0
+    helm.sh/chart: rocketgraph-0.5.0
     app.kubernetes.io/name: rocketgraph
     app.kubernetes.io/version: "2.7.0"
     app.kubernetes.io/managed-by: Helm
@@ -342,7 +342,7 @@ metadata:
   name: test-release-mongodb
   labels:
     app: mongodb
-    helm.sh/chart: rocketgraph-0.4.0
+    helm.sh/chart: rocketgraph-0.5.0
     app.kubernetes.io/name: rocketgraph
     app.kubernetes.io/version: "2.7.0"
     app.kubernetes.io/managed-by: Helm
@@ -365,7 +365,7 @@ metadata:
   name: test-release-xgt
   labels:
     app: xgt
-    helm.sh/chart: rocketgraph-0.4.0
+    helm.sh/chart: rocketgraph-0.5.0
     app.kubernetes.io/name: rocketgraph
     app.kubernetes.io/version: "2.7.0"
     app.kubernetes.io/managed-by: Helm
@@ -389,7 +389,7 @@ metadata:
   name: test-release-backend
   labels:
     app: backend
-    helm.sh/chart: rocketgraph-0.4.0
+    helm.sh/chart: rocketgraph-0.5.0
     app.kubernetes.io/name: rocketgraph
     app.kubernetes.io/version: "2.7.0"
     app.kubernetes.io/managed-by: Helm
@@ -461,7 +461,7 @@ spec:
           volumeMounts:
             - name: tls-certs
               mountPath: /etc/ssl/certs/xgt-server.pem
-              subPath: xgt-server.pem
+              subPath: "xgt-server.pem"
               readOnly: true
       restartPolicy: Always
       volumes:
@@ -477,7 +477,7 @@ metadata:
   name: test-release-frontend
   labels:
     app: frontend
-    helm.sh/chart: rocketgraph-0.4.0
+    helm.sh/chart: rocketgraph-0.5.0
     app.kubernetes.io/name: rocketgraph
     app.kubernetes.io/version: "2.7.0"
     app.kubernetes.io/managed-by: Helm
@@ -530,11 +530,11 @@ spec:
           volumeMounts:
             - name: tls-certs
               mountPath: /etc/ssl/certs/td.pem
-              subPath: public.pem
+              subPath: "public.pem"
               readOnly: true
             - name: tls-certs
               mountPath: /etc/ssl/private/td.pem
-              subPath: private.pem
+              subPath: "private.pem"
               readOnly: true
       restartPolicy: Always
       volumes:
@@ -550,7 +550,7 @@ metadata:
   name: test-release-mongodb
   labels:
     app: mongodb
-    helm.sh/chart: rocketgraph-0.4.0
+    helm.sh/chart: rocketgraph-0.5.0
     app.kubernetes.io/name: rocketgraph
     app.kubernetes.io/version: "2.7.0"
     app.kubernetes.io/managed-by: Helm
@@ -623,7 +623,7 @@ metadata:
   name: test-release-xgt
   labels:
     app: xgt
-    helm.sh/chart: rocketgraph-0.4.0
+    helm.sh/chart: rocketgraph-0.5.0
     app.kubernetes.io/name: rocketgraph
     app.kubernetes.io/version: "2.7.0"
     app.kubernetes.io/managed-by: Helm
@@ -642,7 +642,7 @@ spec:
         app: xgt
         app.kubernetes.io/instance: test-release
       annotations:
-        checksum/config: 019e668f8163b2c54d737b72aa245ba6914971d0e482e5de0d15bde056ad906e
+        checksum/config: 88defb4f4b330c19a46db120505f0571ba990747fd409f023571c04c655a4cd1
     spec:
       containers:
         - name: xgt
@@ -707,8 +707,8 @@ spec:
           secret:
             secretName: test-release-xgt-tls
             items:
-              - key: server.cert.pem
+              - key: "server.cert.pem"
                 path: certs/server.cert.pem
-              - key: server.key.pem
+              - key: "server.key.pem"
                 path: private/server.key.pem
                 mode: 0400

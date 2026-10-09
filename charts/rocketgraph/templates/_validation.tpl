@@ -4,6 +4,24 @@ Call via: {{- include "rocketgraph.validate" . }}
 */}}
 {{- define "rocketgraph.validate" -}}
 
+{{- if .Values.missionControl.enabled }}
+  {{- if not .Values.frontend.tls.existingSecret }}
+    {{- include "rocketgraph.validateInlineTlsKeys" (dict
+      "prefix" "frontend.tls" "keys" (include "rocketgraph.frontendTlsKeys" . | fromYaml)
+      "inline" (dict "cert" .Values.frontend.tls.publicCert "key" .Values.frontend.tls.privateKey "caCert" .Values.frontend.tls.certChain)) }}
+  {{- end }}
+  {{- if not .Values.backend.tls.existingSecret }}
+    {{- include "rocketgraph.validateInlineTlsKeys" (dict
+      "prefix" "backend.tls" "keys" (include "rocketgraph.backendTlsKeys" . | fromYaml)
+      "inline" (dict "cert" .Values.backend.tls.proxyClientCert "key" .Values.backend.tls.proxyClientKey "caCert" .Values.backend.tls.xgtServerCert)) }}
+  {{- end }}
+{{- end }}
+{{- if and .Values.xgt.enabled (not .Values.xgt.files.existingClaim) .Values.xgt.ssl.enabled (not .Values.xgt.ssl.existingSecret) }}
+  {{- include "rocketgraph.validateInlineTlsKeys" (dict
+    "prefix" "xgt.ssl" "keys" (include "rocketgraph.xgtTlsKeys" . | fromYaml)
+    "inline" (dict "cert" .Values.xgt.ssl.cert "key" .Values.xgt.ssl.key "caCert" .Values.xgt.ssl.caCert)) }}
+{{- end }}
+
 {{- if and .Values.openshift.enabled (eq .Values.openshift.scc "restricted-v2") }}
   {{- if and .Values.missionControl.enabled (not .Values.fips.enabled) }}
     {{- fail "restricted-v2 with Mission Control requires fips.enabled=true; the non-FIPS frontend image has different startup and writable paths" }}
@@ -39,7 +57,7 @@ Call via: {{- include "rocketgraph.validate" . }}
   {{- if or .Values.xgt.config.existingConfigMap .Values.xgt.config.grouplabelCsv .Values.xgt.config.labelCsv .Values.xgt.config.proxyList .Values.xgt.extraConfig }}
     {{- fail "xgt.files.existingClaim uses configuration files on the PVC; remove xgt.config overrides and xgt.extraConfig and edit the PVC files instead" }}
   {{- end }}
-  {{- if or .Values.xgt.license.existingSecret .Values.xgt.license.data .Values.xgt.licenseManager.enabled .Values.xgt.ldap.enabled .Values.xgt.ssl.existingSecret .Values.xgt.ssl.cert .Values.xgt.ssl.key .Values.xgt.ssl.caCert }}
+  {{- if or .Values.xgt.license.existingSecret .Values.xgt.license.data .Values.xgt.licenseManager.enabled .Values.xgt.ldap.enabled .Values.xgt.ssl.existingSecret .Values.xgt.ssl.cert .Values.xgt.ssl.key .Values.xgt.ssl.caCert .Values.xgt.ssl.caCertExistingSecret }}
     {{- fail "xgt.files.existingClaim supplies license and TLS files on the PVC; remove separate license/TLS/LDAP sources and the bundled license manager" }}
   {{- end }}
 {{- end }}
@@ -88,11 +106,22 @@ Call via: {{- include "rocketgraph.validate" . }}
 {{- if and .Values.backend.tls.mtls (not .Values.backend.tls.existingSecret) (not .Values.backend.tls.proxyClientCert) (not .Values.backend.tls.proxyClientKey) }}
   {{- fail "backend.tls.mtls is true but no existingSecret or inline proxyClientCert/proxyClientKey provided" }}
 {{- end }}
+{{- if and .Values.backend.tls.xgtServerCertConfigMap .Values.backend.tls.xgtServerCert }}
+  {{- fail "backend.tls.xgtServerCert is ignored when xgtServerCertConfigMap is set — set only one source for the xGT CA" }}
+{{- end }}
 
 {{- end }}
 
-{{- if and .Values.xgt.enabled (not .Values.xgt.files.existingClaim) .Values.xgt.ssl.enabled .Values.xgt.ssl.mtls (not .Values.xgt.ssl.existingSecret) (not .Values.xgt.ssl.caCert) }}
-  {{- fail "xgt.ssl.mtls is true but no existingSecret or inline caCert provided for ca-chain.cert.pem" }}
+{{- if and .Values.xgt.enabled (not .Values.xgt.files.existingClaim) .Values.xgt.ssl.enabled .Values.xgt.ssl.mtls (not .Values.xgt.ssl.existingSecret) (not .Values.xgt.ssl.caCertExistingSecret) (not .Values.xgt.ssl.caCert) }}
+  {{- fail "xgt.ssl.mtls is true but no existingSecret, caCertExistingSecret or inline caCert provided for ca-chain.cert.pem" }}
+{{- end }}
+{{- if and .Values.xgt.enabled (not .Values.xgt.files.existingClaim) .Values.xgt.ssl.caCertExistingSecret }}
+  {{- if not (and .Values.xgt.ssl.enabled .Values.xgt.ssl.mtls) }}
+    {{- fail "xgt.ssl.caCertExistingSecret is only used when xgt.ssl.enabled and xgt.ssl.mtls are true" }}
+  {{- end }}
+  {{- if .Values.xgt.ssl.caCert }}
+    {{- fail "xgt.ssl.caCert is ignored when caCertExistingSecret is set — set only one source for the client CA" }}
+  {{- end }}
 {{- end }}
 {{- if and .Values.xgt.enabled (not .Values.xgt.files.existingClaim) .Values.xgt.ssl.enabled .Values.xgt.ssl.mtls .Values.xgt.ssl.existingSecret .Values.xgt.ssl.caCert }}
   {{- fail "xgt.ssl.caCert is ignored when existingSecret is set — include ca-chain.cert.pem in the existing secret instead" }}

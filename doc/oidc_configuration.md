@@ -160,6 +160,8 @@ The first value selects the host file to mount; the second tells the backend to 
 
 ## Keycloak Example
 
+For an illustrated walkthrough covering normal-user Python login, automation service accounts, group and audience mappers, optional LDAP federation and HTTPS trust, start with [Keycloak Setup for xGT](keycloak_setup/README.md). The [Mission Control steps](keycloak_setup/mission_control.md) include complete YAML and commands. Those Helm examples require chart **0.5.0**.
+
 Use a separate confidential client, such as `mission-control`, with **Client authentication** and **Standard flow** enabled. Register `https://mc.example.com/api/login/oidc/callback`. Add Group Membership and Audience mappers to its access tokens, using the groups claim and audience configured on xGT.
 
 Mission Control 2.7.0 does not send a PKCE challenge; do not require PKCE for this confidential client. Keep the separate Python browser client public with PKCE `S256` required and callback `http://127.0.0.1:8765/callback`.
@@ -173,6 +175,8 @@ MC_OIDC_CLIENT_SECRET=<mission-control-client-secret>
 Leave the issuer and scopes unset to discover them from xGT. Supply private-CA settings if needed and `MC_OIDC_FRONTEND_URL=https://mc.example.com` if the derived origin is wrong. In Helm, use `backend.oidc.clientId` and `existingSecret` instead of embedding the client secret in values. See the [Helm example](../charts/rocketgraph/README.md#keycloak).
 
 ## OpenShift Example
+
+For a deployment checklist using chart **0.5.0**, see the [OpenShift and LDAP quickstart](openshift_ldap_quickstart.md).
 
 This example uses **OpenShift OAuth2**, through the existing `OidcAuth` interface.
 An OpenShift `OAuthClient` is a cluster-wide application registration. Its

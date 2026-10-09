@@ -1,0 +1,16 @@
+spec:
+  template:
+    spec:
+      volumes:
+        - name: keycloak-trusted-ca
+          configMap:
+            name: trusted-ca-bundle
+            items:
+              - key: ca-bundle.crt
+                path: ca-bundle.crt
+      containers:
+        - name: backend
+          volumeMounts:
+            - name: keycloak-trusted-ca
+              mountPath: /etc/keycloak-ca
+              readOnly: true

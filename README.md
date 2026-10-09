@@ -58,6 +58,8 @@ The guides below cover individual topics in depth.  The first four apply to ever
 | [ODBC Configuration](doc/odbc_configuration.md) | Loading data from external databases — PostgreSQL, MariaDB, and IBM i (AS/400) |
 | [Deployment Reference](doc/deployment_reference.md) | Per-container images, ports, volume paths, and environment variables — for orchestrators not listed above, or for debugging a running container |
 | [Helm Chart](charts/rocketgraph/README.md) | Deploying on Kubernetes and OpenShift, and every value the chart accepts |
+| [Keycloak Setup for xGT](doc/keycloak_setup/README.md) | Illustrated normal-user and automation login setup, token mappers, LDAP federation, HTTPS trust and Mission Control; Helm examples require chart 0.5.0 |
+| [OpenShift and LDAP Quickstart](doc/openshift_ldap_quickstart.md) | Deployment checklist for LDAP groups, OAuth clients, xGT labels and service-account tokens; Helm examples require chart 0.5.0 |
 | [OpenShift Test Server](doc/openshift_test_server/README.md) | Step-by-step LDAP/OAuth setup, group synchronization, FIPS images, automation tokens, and three XGT servers sharing Mission Control |
 | [OpenShift FIPS Deployment Planning](doc/openshift_fips_deployment.md) | Administrator responsibilities, required inputs, and deployment acceptance checks |
 

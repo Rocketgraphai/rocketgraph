@@ -1,0 +1,38 @@
+# XGT-only with an OpenShift-generated serving certificate under restricted-v2.
+# Create the license Secret first and replace the hostname for your license.
+missionControl:
+  enabled: false
+mongodb:
+  enabled: false
+openshift:
+  enabled: true
+  scc: restricted-v2
+fips:
+  enabled: true
+xgt:
+  hostname: demo-xgt-test
+  image:
+    tag: '2.7.1'
+  license:
+    existingSecret: xgt-license
+  service:
+    annotations:
+      service.beta.openshift.io/serving-cert-secret-name: xgt-serving-tls
+  ssl:
+    enabled: true
+    existingSecret: xgt-serving-tls
+    secretKeys:
+      cert: tls.crt
+      key: tls.key
+    # For mTLS, create a Secret with ca-chain.cert.pem containing the client CA:
+    # mtls: true
+    # caCertExistingSecret: xgt-client-ca
+  extraConfig:
+    system.max_memory: '1'
+    system.worker_threads: '2'
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      memory: 1536Mi
