@@ -4,6 +4,24 @@ Call via: {{- include "rocketgraph.validate" . }}
 */}}
 {{- define "rocketgraph.validate" -}}
 
+{{- if .Values.missionControl.enabled }}
+  {{- if not .Values.frontend.tls.existingSecret }}
+    {{- include "rocketgraph.validateInlineTlsKeys" (dict
+      "prefix" "frontend.tls" "keys" (include "rocketgraph.frontendTlsKeys" . | fromYaml)
+      "inline" (dict "cert" .Values.frontend.tls.publicCert "key" .Values.frontend.tls.privateKey "caCert" .Values.frontend.tls.certChain)) }}
+  {{- end }}
+  {{- if not .Values.backend.tls.existingSecret }}
+    {{- include "rocketgraph.validateInlineTlsKeys" (dict
+      "prefix" "backend.tls" "keys" (include "rocketgraph.backendTlsKeys" . | fromYaml)
+      "inline" (dict "cert" .Values.backend.tls.proxyClientCert "key" .Values.backend.tls.proxyClientKey "caCert" .Values.backend.tls.xgtServerCert)) }}
+  {{- end }}
+{{- end }}
+{{- if and .Values.xgt.enabled (not .Values.xgt.files.existingClaim) .Values.xgt.ssl.enabled (not .Values.xgt.ssl.existingSecret) }}
+  {{- include "rocketgraph.validateInlineTlsKeys" (dict
+    "prefix" "xgt.ssl" "keys" (include "rocketgraph.xgtTlsKeys" . | fromYaml)
+    "inline" (dict "cert" .Values.xgt.ssl.cert "key" .Values.xgt.ssl.key "caCert" .Values.xgt.ssl.caCert)) }}
+{{- end }}
+
 {{- if and .Values.openshift.enabled (eq .Values.openshift.scc "restricted-v2") }}
   {{- if and .Values.missionControl.enabled (not .Values.fips.enabled) }}
     {{- fail "restricted-v2 with Mission Control requires fips.enabled=true; the non-FIPS frontend image has different startup and writable paths" }}

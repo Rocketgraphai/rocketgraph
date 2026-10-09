@@ -1,4 +1,6 @@
 {{- if .Values.xgt.enabled }}
+{{- $tlsKeys := include "rocketgraph.xgtTlsKeys" . | fromYaml }}
+{{- $oidcCa := include "rocketgraph.xgtOidcCa" . | fromYaml }}
 {{- $restricted := and .Values.openshift.enabled (eq .Values.openshift.scc "restricted-v2") }}
 {{- $files := .Values.xgt.files.existingClaim }}
 {{- $direct := or $restricted $files }}
@@ -26,8 +28,8 @@ spec:
         {{- if not (or $files .Values.xgt.config.existingConfigMap) }}
         checksum/config: {{ include (print $.Template.BasePath "/xgt-configmap.yaml") . | sha256sum }}
         {{- end }}
-        {{- if or .Values.backend.oidc.caCert .Values.backend.oidc.caCertExistingSecret }}
-        checksum/oidc-ca-secret: {{ .Values.backend.oidc.caCert | default .Values.backend.oidc.caCertExistingSecret | sha256sum }}
+        {{- if $oidcCa.enabled }}
+        checksum/oidc-ca-secret: {{ include "rocketgraph.xgtOidcCa" . | sha256sum }}
         {{- end }}
         {{- with .Values.xgt.podAnnotations }}
         {{- toYaml . | nindent 8 }}
@@ -169,7 +171,7 @@ spec:
             {{- if or .Values.xgt.license.existingSecret .Values.xgt.license.data }}
             - name: xgt-license
               mountPath: /license/xgtd.lic
-              subPath: xgtd.lic
+              subPath: {{ include "rocketgraph.xgtLicenseKey" . | quote }}
               readOnly: true
             {{- end }}
             {{- if .Values.xgt.ldap.enabled }}
@@ -178,10 +180,10 @@ spec:
               readOnly: true
             {{- end }}
             {{- end }}
-            {{- if or .Values.backend.oidc.caCert .Values.backend.oidc.caCertExistingSecret }}
+            {{- if $oidcCa.enabled }}
             - name: oidc-ca-cert
               mountPath: /etc/ssl/certs/oidc-ca.pem
-              subPath: oidc-ca.pem
+              subPath: {{ $oidcCa.key | quote }}
               readOnly: true
             {{- end }}
             {{- with .Values.xgt.extraVolumeMounts }}
@@ -231,28 +233,28 @@ spec:
               - secret:
                   name: {{ include "rocketgraph.xgtTlsSecret" . }}
                   items:
-                    - key: {{ .Values.xgt.ssl.secretKeys.cert }}
+                    - key: {{ $tlsKeys.cert | quote }}
                       path: certs/server.cert.pem
-                    - key: {{ .Values.xgt.ssl.secretKeys.key }}
+                    - key: {{ $tlsKeys.key | quote }}
                       path: private/server.key.pem
                       mode: {{ ternary "0440" "0400" $restricted }}
               - secret:
-                  name: {{ .Values.xgt.ssl.caCertExistingSecret }}
+                  name: {{ .Values.xgt.ssl.caCertExistingSecret | quote }}
                   items:
-                    - key: {{ .Values.xgt.ssl.secretKeys.caCert }}
+                    - key: {{ $tlsKeys.caCert | quote }}
                       path: certs/ca-chain.cert.pem
         {{- else if .Values.xgt.ssl.enabled }}
         - name: xgt-tls
           secret:
             secretName: {{ include "rocketgraph.xgtTlsSecret" . }}
             items:
-              - key: {{ .Values.xgt.ssl.secretKeys.cert }}
+              - key: {{ $tlsKeys.cert | quote }}
                 path: certs/server.cert.pem
-              - key: {{ .Values.xgt.ssl.secretKeys.key }}
+              - key: {{ $tlsKeys.key | quote }}
                 path: private/server.key.pem
                 mode: {{ ternary "0440" "0400" $restricted }}
               {{- if and .Values.xgt.ssl.mtls (or .Values.xgt.ssl.caCert .Values.xgt.ssl.existingSecret) }}
-              - key: {{ .Values.xgt.ssl.secretKeys.caCert }}
+              - key: {{ $tlsKeys.caCert | quote }}
                 path: certs/ca-chain.cert.pem
               {{- end }}
         {{- end }}
@@ -271,10 +273,10 @@ spec:
                 mode: 0600
         {{- end }}
         {{- end }}
-        {{- if or .Values.backend.oidc.caCert .Values.backend.oidc.caCertExistingSecret }}
+        {{- if $oidcCa.enabled }}
         - name: oidc-ca-cert
           secret:
-            secretName: {{ include "rocketgraph.backendOidcCaSecret" . }}
+            secretName: {{ $oidcCa.name | quote }}
         {{- end }}
         {{- with .Values.xgt.extraVolumes }}
         {{- toYaml . | nindent 8 }}

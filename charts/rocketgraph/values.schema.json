@@ -207,7 +207,7 @@
           "properties": {
             "existingSecret": {
               "type": "string",
-              "description": "Name of an existing Secret containing keys 'public.pem', 'private.pem', and optionally 'chain.pem'",
+              "description": "Name of an existing Secret containing frontend certificate keys selected by secretKeys",
               "default": ""
             },
             "publicCert": {
@@ -227,13 +227,41 @@
             },
             "mtls": {
               "type": "boolean",
-              "description": "Enable browser mTLS; mounts chain.pem from existingSecret or certChain as the CA for validating browser client certificates",
+              "description": "Enable browser mTLS; client CA comes from secretKeys.caCert in existingSecret or inline certChain",
               "default": false
             },
             "external": {
               "type": "boolean",
               "description": "Set when TLS is terminated upstream (Ingress TLS or an edge-terminated route) so the backend marks session cookies Secure",
               "default": false
+            },
+            "secretKeys": {
+              "type": "object",
+              "description": "Key names in the frontend TLS Secret, whether existingSecret or the one the chart creates",
+              "additionalProperties": false,
+              "properties": {
+                "cert": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 253,
+                  "pattern": "^([a-zA-Z0-9_-]|\\.[a-zA-Z0-9_-])[a-zA-Z0-9._-]*$",
+                  "default": "public.pem"
+                },
+                "key": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 253,
+                  "pattern": "^([a-zA-Z0-9_-]|\\.[a-zA-Z0-9_-])[a-zA-Z0-9._-]*$",
+                  "default": "private.pem"
+                },
+                "caCert": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 253,
+                  "pattern": "^([a-zA-Z0-9_-]|\\.[a-zA-Z0-9_-])[a-zA-Z0-9._-]*$",
+                  "default": "chain.pem"
+                }
+              }
             }
           }
         }
@@ -485,7 +513,7 @@
           "properties": {
             "existingSecret": {
               "type": "string",
-              "description": "Name of an existing Secret containing key 'xgt-server.pem'. For mTLS, also include 'proxy-client-cert.pem' and 'proxy-client-key.pem' and set the corresponding inline values to enable mounting.",
+              "description": "Name of an existing Secret containing certificate keys selected by secretKeys. For mTLS include the client certificate/key and set mtls=true; include the XGT CA unless supplied by xgtServerCertConfigMap.",
               "default": ""
             },
             "xgtServerCert": {
@@ -516,8 +544,38 @@
             "xgtServerCertConfigMapKey": {
               "type": "string",
               "minLength": 1,
+              "maxLength": 253,
+              "pattern": "^([a-zA-Z0-9_-]|\\.[a-zA-Z0-9_-])[a-zA-Z0-9._-]*$",
               "description": "Key in xgtServerCertConfigMap that holds the CA certificate",
               "default": "service-ca.crt"
+            },
+            "secretKeys": {
+              "type": "object",
+              "description": "Key names in the backend TLS Secret, whether existingSecret or the one the chart creates; cert/key are client credentials and caCert verifies XGT",
+              "additionalProperties": false,
+              "properties": {
+                "cert": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 253,
+                  "pattern": "^([a-zA-Z0-9_-]|\\.[a-zA-Z0-9_-])[a-zA-Z0-9._-]*$",
+                  "default": "proxy-client-cert.pem"
+                },
+                "key": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 253,
+                  "pattern": "^([a-zA-Z0-9_-]|\\.[a-zA-Z0-9_-])[a-zA-Z0-9._-]*$",
+                  "default": "proxy-client-key.pem"
+                },
+                "caCert": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 253,
+                  "pattern": "^([a-zA-Z0-9_-]|\\.[a-zA-Z0-9_-])[a-zA-Z0-9._-]*$",
+                  "default": "xgt-server.pem"
+                }
+              }
             }
           }
         },
@@ -560,7 +618,7 @@
             },
             "existingSecret": {
               "type": "string",
-              "description": "Name of an existing Secret containing key MC_OIDC_CLIENT_SECRET",
+              "description": "Name of an existing Secret containing the client secret under secretKeys.clientSecret",
               "default": ""
             },
             "scopes": {
@@ -595,13 +653,36 @@
             },
             "caCertExistingSecret": {
               "type": "string",
-              "description": "Name of an existing Secret containing key oidc-ca.pem",
+              "description": "Name of an existing Secret containing the OIDC CA bundle under secretKeys.caCert",
               "default": ""
             },
             "xgtAllowedHosts": {
               "type": "string",
               "description": "Comma-separated host:port allowlist for xGT connections (SSRF prevention). Defaults to the internal xGT service when xgt.enabled=true. Empty when xgt.enabled=false — set explicitly when using an external xGT.",
               "default": ""
+            },
+            "secretKeys": {
+              "type": "object",
+              "description": "Source key names for OIDC client secret and CA bundle; application destinations remain unchanged",
+              "additionalProperties": false,
+              "properties": {
+                "clientSecret": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "Client secret key in existing and chart-generated Secrets",
+                  "maxLength": 253,
+                  "pattern": "^([a-zA-Z0-9_-]|\\.[a-zA-Z0-9_-])[a-zA-Z0-9._-]*$",
+                  "default": "MC_OIDC_CLIENT_SECRET"
+                },
+                "caCert": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "OIDC CA bundle key in existing and chart-generated Secrets; used by both xGT and the backend",
+                  "maxLength": 253,
+                  "pattern": "^([a-zA-Z0-9_-]|\\.[a-zA-Z0-9_-])[a-zA-Z0-9._-]*$",
+                  "default": "oidc-ca.pem"
+                }
+              }
             }
           }
         },
@@ -1252,7 +1333,7 @@
             },
             "mtls": {
               "type": "boolean",
-              "description": "Require client certificates; needs a client CA from existingSecret, caCertExistingSecret or the caCert parameter",
+              "description": "Require client certificates; client CA comes from caCertExistingSecret, secretKeys.caCert in existingSecret, or inline caCert",
               "default": false
             },
             "caCert": {
@@ -1262,7 +1343,7 @@
             },
             "caCertExistingSecret": {
               "type": "string",
-              "description": "Name of an existing Secret holding the CA for validating client certificates under secretKeys.caCert, separate from the server certificate's Secret. Requires mtls",
+              "description": "Separate Secret holding the mTLS client CA under secretKeys.caCert; can be used with an OpenShift-generated server Secret",
               "default": ""
             },
             "secretKeys": {
@@ -1274,18 +1355,24 @@
                   "type": "string",
                   "minLength": 1,
                   "description": "Key holding the server certificate (e.g. tls.crt)",
+                  "maxLength": 253,
+                  "pattern": "^([a-zA-Z0-9_-]|\\.[a-zA-Z0-9_-])[a-zA-Z0-9._-]*$",
                   "default": "server.cert.pem"
                 },
                 "key": {
                   "type": "string",
                   "minLength": 1,
                   "description": "Key holding the server private key (e.g. tls.key)",
+                  "maxLength": 253,
+                  "pattern": "^([a-zA-Z0-9_-]|\\.[a-zA-Z0-9_-])[a-zA-Z0-9._-]*$",
                   "default": "server.key.pem"
                 },
                 "caCert": {
                   "type": "string",
                   "minLength": 1,
-                  "description": "Key holding the CA chain used to validate client certificates when mtls is true, in caCertExistingSecret if set and otherwise in the xGT TLS Secret",
+                  "description": "Key holding the CA chain used to validate client certificates when mtls is true",
+                  "maxLength": 253,
+                  "pattern": "^([a-zA-Z0-9_-]|\\.[a-zA-Z0-9_-])[a-zA-Z0-9._-]*$",
                   "default": "ca-chain.cert.pem"
                 }
               }
@@ -1299,13 +1386,21 @@
           "properties": {
             "existingSecret": {
               "type": "string",
-              "description": "Name of an existing Secret containing the key 'xgtd.lic' with the license data",
+              "description": "Name of an existing Secret containing the license file under secretKey",
               "default": ""
             },
             "data": {
               "type": "string",
               "description": "Plain-text license file contents, not database data or base64. Ignored when existingSecret is provided.",
               "default": ""
+            },
+            "secretKey": {
+              "type": "string",
+              "minLength": 1,
+              "description": "License file key in existing and chart-generated Secrets; mounted at /license/xgtd.lic",
+              "maxLength": 253,
+              "pattern": "^([a-zA-Z0-9_-]|\\.[a-zA-Z0-9_-])[a-zA-Z0-9._-]*$",
+              "default": "xgtd.lic"
             }
           }
         },
@@ -1671,6 +1766,37 @@
             "type": "object"
           },
           "default": []
+        },
+        "oidc": {
+          "type": "object",
+          "description": "xGT OIDC HTTPS CA trust. Falls back to backend.oidc CA settings when neither CA source is set.",
+          "additionalProperties": false,
+          "properties": {
+            "caCert": {
+              "type": "string",
+              "description": "Inline PEM CA bundle for xGT OIDC HTTPS requests; creates an xGT CA Secret",
+              "default": ""
+            },
+            "caCertExistingSecret": {
+              "type": "string",
+              "description": "Existing Secret holding the xGT OIDC CA bundle under secretKeys.caCert; preferred over inline caCert",
+              "default": ""
+            },
+            "secretKeys": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "caCert": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "CA bundle key in the xGT OIDC CA Secret; mounted at /etc/ssl/certs/oidc-ca.pem",
+                  "maxLength": 253,
+                  "pattern": "^([a-zA-Z0-9_-]|\\.[a-zA-Z0-9_-])[a-zA-Z0-9._-]*$",
+                  "default": "oidc-ca.pem"
+                }
+              }
+            }
+          }
         }
       }
     },

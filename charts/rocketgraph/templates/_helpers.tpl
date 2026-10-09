@@ -121,6 +121,24 @@ Backend OIDC CA cert secret name
 {{- .Values.backend.oidc.caCertExistingSecret | default (printf "%s-backend-oidc-ca" .Release.Name) }}
 {{- end }}
 
+{{/* xGT owns its OIDC CA; backend settings remain a legacy fallback. */}}
+{{- define "rocketgraph.xgtOidcCa" -}}
+{{- $oidc := .Values.xgt.oidc | default dict -}}
+{{- $source := .Values.backend.oidc -}}
+{{- $keys := include "rocketgraph.backendOidcKeys" . | fromYaml -}}
+{{- $name := include "rocketgraph.backendOidcCaSecret" . -}}
+{{- $owner := "backend" -}}
+{{- if or $oidc.caCert $oidc.caCertExistingSecret -}}
+  {{- $source = $oidc -}}
+  {{- $keys = merge (deepCopy ($oidc.secretKeys | default dict)) (dict "caCert" "oidc-ca.pem") -}}
+  {{- $name = $oidc.caCertExistingSecret | default (printf "%s-xgt-oidc-ca" .Release.Name) -}}
+  {{- $owner = "xgt" -}}
+{{- end -}}
+{{- dict "enabled" (or (not (empty $source.caCert)) (not (empty $source.caCertExistingSecret)))
+  "existingSecret" ($source.caCertExistingSecret | default "")
+  "data" ($source.caCert | default "") "name" $name "key" $keys.caCert "owner" $owner | toYaml -}}
+{{- end -}}
+
 {{/*
 FIPS image tag suffix — appends "-fips" when fips.enabled=true, empty otherwise.
 */}}

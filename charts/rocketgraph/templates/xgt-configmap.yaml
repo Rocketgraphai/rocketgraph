@@ -1,4 +1,5 @@
 {{- if and .Values.xgt.enabled (not .Values.xgt.files.existingClaim) (not .Values.xgt.config.existingConfigMap) }}
+{{- $oidcCa := include "rocketgraph.xgtOidcCa" . | fromYaml }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -58,7 +59,7 @@ data:
     {{- $_ := set $defaults "security.proxy_list" $proxyStr }}
     {{- end }}
     {{- $merged := merge (deepCopy (.Values.xgt.extraConfig | default dict)) $defaults }}
-    {{- if and (index $merged "security.oidc") (or .Values.backend.oidc.caCert .Values.backend.oidc.caCertExistingSecret) }}
+    {{- if and (index $merged "security.oidc") $oidcCa.enabled }}
     {{- $oidc := index $merged "security.oidc" }}
     {{- if not (hasKey $oidc "ca_cert") }}
     {{- $_ := set $oidc "ca_cert" "/etc/ssl/certs/oidc-ca.pem" }}

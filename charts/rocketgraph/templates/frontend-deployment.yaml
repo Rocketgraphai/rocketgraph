@@ -1,4 +1,5 @@
 {{- if .Values.missionControl.enabled }}
+{{- $tlsKeys := include "rocketgraph.frontendTlsKeys" . | fromYaml }}
 {{- $restricted := and .Values.openshift.enabled (eq .Values.openshift.scc "restricted-v2") }}
 {{- $tls := or .Values.frontend.tls.existingSecret .Values.frontend.tls.publicCert .Values.frontend.tls.privateKey }}
 apiVersion: apps/v1
@@ -110,16 +111,16 @@ spec:
             {{- if $tls }}
             - name: tls-certs
               mountPath: /etc/ssl/certs/td.pem
-              subPath: public.pem
+              subPath: {{ $tlsKeys.cert | quote }}
               readOnly: true
             - name: tls-certs
               mountPath: /etc/ssl/private/td.pem
-              subPath: private.pem
+              subPath: {{ $tlsKeys.key | quote }}
               readOnly: true
             {{- if and .Values.frontend.tls.mtls (or .Values.frontend.tls.certChain .Values.frontend.tls.existingSecret) }}
             - name: tls-certs
               mountPath: /etc/ssl/certs/ca-chain.pem
-              subPath: chain.pem
+              subPath: {{ $tlsKeys.caCert | quote }}
               readOnly: true
             {{- end }}
             {{- end }}

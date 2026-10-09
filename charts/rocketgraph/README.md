@@ -59,7 +59,7 @@ oc get route <release-name>-frontend -o jsonpath='{.spec.host}'
 
 ### Full Stack with OpenShift restricted-v2
 
-In chart 0.4.0, add this to your site values to run XGT, Mission Control and MongoDB without an `anyuid` grant:
+In chart 0.4.0 and later, add this to your site values to run XGT, Mission Control and MongoDB without an `anyuid` grant:
 
 ```yaml
 openshift:
@@ -266,6 +266,8 @@ xgt:
 
 Keep per-release settings in version-controlled values files and pass them again to `helm upgrade`. Review release notes and rendered manifests before upgrading. If you modify chart templates instead, maintain a fork and merge upstream changes yourself; Helm does not merge customer template edits into an upstream chart.
 
+Upgrades with `--reuse-values` retain the legacy frontend, backend and XGT TLS Secret key names when `secretKeys` is absent. Partial key mappings also retain defaults for unspecified entries. Custom key names must follow Kubernetes Secret key rules: 1–253 letters, digits, `.`, `_` or `-`, excluding `.` and names starting with `..`. When the chart generates a TLS Secret from inline certificate values, each supplied certificate, private key and CA must select a distinct key name.
+
 ### With xGT License Manager
 
 The License Manager is a standalone service that serves license files to xGT over port 6200, supporting multiple licenses and multiple xGT replicas. When enabled, `license.location` in xgtd.conf is set automatically.
@@ -294,6 +296,33 @@ See [`values-license-manager.yaml`](values-license-manager.yaml) for a complete 
 ## Configuration Guides
 
 Step-by-step guides for the chart's optional features.  Each one shows the values to set and any Secret or ConfigMap you need to create first.  For the complete list of every value the chart accepts, see [Values Reference](#values-reference).
+
+### License and OIDC Secret Key Names
+
+Choose the source keys when reusing Secrets whose keys differ from the chart defaults:
+
+```yaml
+xgt:
+  license:
+    existingSecret: company-xgt-license
+    secretKey: license.lic
+  oidc:
+    caCertExistingSecret: company-oidc
+    secretKeys:
+      caCert: ca.crt
+backend:
+  oidc:
+    existingSecret: company-oidc
+    caCertExistingSecret: company-oidc
+    secretKeys:
+      clientSecret: client-secret
+      caCert: ca.crt
+    tlsVerify: /etc/ssl/certs/oidc-ca.pem
+```
+
+Here `company-xgt-license` must contain `license.lic`, and `company-oidc` must contain `client-secret` and `ca.crt`. The chart mounts the license at `/license/xgtd.lic`, mounts the OIDC CA at `/etc/ssl/certs/oidc-ca.pem` in each configured component, and exposes the client secret as `MC_OIDC_CLIENT_SECRET` in the backend. Source key names do not change those application destinations. For xGT alone, keep `xgt.oidc` and omit the backend settings.
+
+The same keys are used when the chart creates Secrets from `xgt.license.data`, `xgt.oidc.caCert`, `backend.oidc.clientSecret` or `backend.oidc.caCert`. Defaults remain `xgtd.lic`, `MC_OIDC_CLIENT_SECRET` and `oidc-ca.pem`; existing values files need no changes. Keys must be valid Kubernetes Secret keys: up to 253 letters, digits, `.`, `_` or `-`, excluding `.` and names beginning with `..`. Restart xGT after changing the license or CA, and restart the backend after changing its client secret or CA; file mounts use `subPath` and environment variables are read when the pod starts.
 
 ### TLS / SSL
 
@@ -432,6 +461,8 @@ helm install <release-name> ./charts/rocketgraph -n <namespace> -f serving-certs
 
 The xGT pod waits in `ContainerCreating` until OpenShift has created the secret, which normally takes a few seconds after the service exists.
 
+For an XGT-only deployment under `restricted-v2`, see [examples/xgt_openshift_service_tls.yaml](examples/xgt_openshift_service_tls.yaml). Replace the licensed hostname and create the referenced license Secret before installing.
+
 xGT reads its certificate only at startup. When OpenShift renews the certificate, restart the xGT pod to pick up the new one:
 
 ```bash
@@ -497,6 +528,60 @@ auth = xgt.PKIAuth(ssl_server_cert = "service-ca.crt",
 ```
 
 The `Connection` and `PKIAuth` documentation describes their other SSL options.
+
+The backend CA ConfigMap is mounted using `subPath`. When its CA bundle changes, restart the backend to refresh that mounted file:
+
+```bash
+oc rollout restart deployment/<release-name>-backend -n <namespace>
+```
+
+#### Backend TLS Secret Key Names
+
+The backend can read an mTLS client Secret with `tls.crt` and `tls.key`, or custom key names, without renaming the source keys:
+
+```yaml
+backend:
+  tls:
+    existingSecret: backend-client-tls
+    mtls: true
+    secretKeys:
+      cert: tls.crt
+      key: tls.key
+      caCert: ca.crt
+```
+
+For the backend, `cert` and `key` are its **client** certificate and private key used when connecting to XGT. `caCert` is the CA used to verify XGT's server certificate. The Secret must contain that CA key unless `backend.tls.xgtServerCertConfigMap` supplies it separately, as in the OpenShift service-certificate example above. The serving-certificate annotation does not issue these client credentials.
+
+The chart mounts the selected keys at the backend's existing paths: `/etc/ssl/certs/proxy-client-cert.pem`, `/etc/ssl/private/proxy-client-key.pem`, and `/etc/ssl/certs/xgt-server.pem`. It also uses the selected keys when creating a Secret from inline `proxyClientCert`, `proxyClientKey`, and `xgtServerCert`. Defaults remain unchanged. The ConfigMap CA key continues to use `xgtServerCertConfigMapKey`, independently of `secretKeys.caCert`.
+
+Restart the backend after updating its TLS Secret because these mounts use `subPath`.
+
+#### Frontend TLS Secret Key Names
+
+The frontend accepts standard Kubernetes TLS Secrets with `tls.crt` and `tls.key`. For browser access, the certificate must cover the public hostname, such as `mc.company.com`, and its CA must be trusted by the browser. Create the Secret using your issued certificate chain and private key:
+
+```bash
+oc -n <namespace> create secret tls frontend-tls \
+  --cert=./fullchain.pem --key=./private-key.pem
+```
+
+Then select those source keys in your values file:
+
+```yaml
+frontend:
+  tls:
+    existingSecret: frontend-tls
+    secretKeys:
+      cert: tls.crt
+      key: tls.key
+      caCert: client-ca.pem  # Needed only when frontend.tls.mtls is true.
+```
+
+Key mapping preserves the certificate's identity and trust requirements. An OpenShift-generated **service** certificate covers internal Service DNS names, so it is useful for the router-to-frontend HTTPS connection of a re-encrypt Route. The browser sees the Route's separate certificate, which must cover the public hostname. An edge Route terminates TLS at the router and does not require frontend TLS Secret settings.
+
+These settings select source keys in the Secret. Container paths remain `/etc/ssl/certs/td.pem`, `/etc/ssl/private/td.pem`, and, for mTLS, `/etc/ssl/certs/ca-chain.pem`. The chart uses the same key names when creating a Secret from inline frontend certificates. Default keys remain `public.pem`, `private.pem`, and `chain.pem`. `secretKeys.caCert` selects the CA for verifying browser client certificates; server intermediate certificates belong in `tls.crt` with the server certificate.
+
+Restart the frontend after certificate updates because its certificate mounts use `subPath`.
 
 ### With MongoDB Authentication
 
@@ -932,22 +1017,25 @@ Issuer, client ID, and `user:info` are discovered from xGT. The callback is deri
 
 #### CA Certificates
 
-If the identity provider uses a private or self-signed CA, create a secret and reference it.
-The cert is automatically mounted into both the backend and xGT, and `security.oidc.ca_cert`
-is injected into xGT's config automatically.
+If the identity provider uses a private or self-signed CA, create a Secret and reference it in the component that makes the HTTPS requests.
 
 ```bash
 kubectl create secret generic oidc-ca --from-file=oidc-ca.pem=/path/to/ca.pem -n <namespace>
 ```
 
 ```yaml
+xgt:
+  oidc:
+    caCertExistingSecret: oidc-ca
 backend:
   oidc:
     caCertExistingSecret: oidc-ca
     tlsVerify: /etc/ssl/certs/oidc-ca.pem
 ```
 
-The mount supplies the certificate file; `tlsVerify` selects that file for backend HTTPS verification. Both are needed when the CA is not already trusted.
+`xgt.oidc.caCertExistingSecret` mounts the CA into xGT at `/etc/ssl/certs/oidc-ca.pem` and fills in `security.oidc.ca_cert` in the generated configuration when that field is absent. An explicit `xgt.extraConfig.security.oidc.ca_cert` is unnecessary for this mount. For an external ConfigMap or files PVC, set that path in the mounted configuration yourself. Omit the backend section when Mission Control is disabled.
+
+For Mission Control, `backend.oidc.caCertExistingSecret` supplies its backend's mount and `tlsVerify` selects that file for backend HTTPS verification. The two components can reuse the same Secret or trust different bundles. An xGT-specific CA source takes precedence for xGT; when neither `xgt.oidc.caCertExistingSecret` nor `xgt.oidc.caCert` is set, the chart still uses the legacy backend CA settings for xGT. Existing values files keep working.
 
 ### Site Configuration
 
@@ -1081,12 +1169,15 @@ The Ingress routes to the frontend service on port 80. The ingress controller te
 
 | Parameter                     | Description                                                                                   | Default |
 |-------------------------------|-----------------------------------------------------------------------------------------------|---------|
-| `frontend.tls.existingSecret` | Secret with keys: `public.pem`, `private.pem`, optionally `chain.pem` for mTLS                | `""`    |
+| `frontend.tls.existingSecret` | TLS Secret; key names selected by `secretKeys`                                               | `""`    |
+| `frontend.tls.secretKeys`    | Certificate, private-key and client-CA source keys in existing or chart-generated Secrets    | `{cert: public.pem, key: private.pem, caCert: chain.pem}` |
 | `frontend.tls.publicCert`     | Inline public cert PEM                                                                        | `""`    |
 | `frontend.tls.privateKey`     | Inline private key PEM                                                                        | `""`    |
-| `frontend.tls.certChain`      | Inline cert chain PEM (enables mTLS)                                                          | `""`    |
+| `frontend.tls.certChain`      | Inline client-CA chain PEM, mounted when `frontend.tls.mtls` is true                          | `""`    |
+| `frontend.tls.mtls`           | Require browser client certificates                                                         | `false` |
 | `frontend.tls.external`       | TLS terminated upstream (Ingress TLS / edge route); marks session cookies `Secure`           | `false` |
-| `backend.tls.existingSecret`  | Secret with keys: `xgt-server.pem`, optionally `proxy-client-cert.pem`/`proxy-client-key.pem` | `""`    |
+| `backend.tls.existingSecret`  | TLS Secret; key names selected by `secretKeys`                                             | `""`    |
+| `backend.tls.secretKeys`     | Client certificate/key and XGT CA source keys in existing or chart-generated Secrets        | `{cert: proxy-client-cert.pem, key: proxy-client-key.pem, caCert: xgt-server.pem}` |
 | `backend.tls.xgtServerCert`   | Inline xGT server CA cert PEM                                                                 | `""`    |
 | `backend.tls.proxyClientCert` | Inline proxy client cert PEM                                                                  | `""`    |
 | `backend.tls.proxyClientKey`  | Inline proxy client key PEM                                                                   | `""`    |
@@ -1126,14 +1217,16 @@ The Ingress routes to the frontend service on port 80. The ingress controller te
 | `backend.oidc.issuer`              | Override OIDC issuer URL (auto-discovered from xGT if empty)                                   | `""`    |
 | `backend.oidc.clientId`            | Override OAuth2 client ID (auto-discovered from xGT if empty)                                  | `""`    |
 | `backend.oidc.clientSecret`        | Client secret — inline value creates a Secret                                                  | `""`    |
-| `backend.oidc.existingSecret`      | Existing Secret with key `MC_OIDC_CLIENT_SECRET`                                               | `""`    |
+| `backend.oidc.existingSecret`      | Existing Secret with the key selected by `secretKeys.clientSecret`                              | `""`    |
+| `backend.oidc.secretKeys.clientSecret` | Client secret key in existing and chart-generated Secrets                                  | `MC_OIDC_CLIENT_SECRET` |
 | `backend.oidc.scopes`              | Optional scope override; uses xGT-advertised scopes during discovery when empty                | `""`    |
 | `backend.oidc.frontendUrl`         | Override public frontend origin for post-login redirects and the derived callback              | `""`    |
 | `backend.oidc.redirectUri`         | Override redirect URI sent to the IdP                                                          | `""`    |
 | `backend.oidc.allowedOrigins`      | Comma-separated allowed origins (defense-in-depth, optional)                                   | `""`    |
 | `backend.oidc.tlsVerify`           | `true`, `false`, or path to CA bundle for OIDC HTTP calls                                      | `""`    |
-| `backend.oidc.caCert`              | Inline CA PEM — creates a Secret, mounted into backend and xGT at `/etc/ssl/certs/oidc-ca.pem` | `""`    |
-| `backend.oidc.caCertExistingSecret`| Existing Secret with key `oidc-ca.pem`                                                         | `""`    |
+| `backend.oidc.caCert`              | Inline CA PEM for backend HTTPS; legacy fallback for xGT when no xGT-specific source is set    | `""`    |
+| `backend.oidc.caCertExistingSecret`| Existing Secret with the key selected by `secretKeys.caCert`                                   | `""`    |
+| `backend.oidc.secretKeys.caCert`   | Backend CA bundle key; also used by xGT when falling back to backend CA settings                | `oidc-ca.pem` |
 | `backend.oidc.xgtAllowedHosts`     | xGT host:port allowlist (SSRF prevention). Defaults to internal xGT service.                   | `""`    |
 
 ### Persistence
@@ -1178,6 +1271,9 @@ The Ingress routes to the frontend service on port 80. The ingress controller te
 |-----------------------------|--------------------------------------|----------------|
 | `xgt.enabled`               | Deploy xGT as part of the release    | `true`         |
 | `xgt.hostname`              | Fixed container OS hostname for licensing; does not change the pod or Service name | `""` |
+| `xgt.oidc.caCert`           | Inline CA PEM for xGT OIDC HTTPS requests; creates an xGT CA Secret | `""` |
+| `xgt.oidc.caCertExistingSecret` | Existing xGT OIDC CA Secret; preferred over inline CA. Uses legacy backend CA settings if both xGT sources are empty | `""` |
+| `xgt.oidc.secretKeys.caCert` | CA bundle key in the xGT OIDC CA Secret; mounted at `/etc/ssl/certs/oidc-ca.pem` | `oidc-ca.pem` |
 | `xgt.files.existingClaim`   | Common PVC for conf/license/data/log; separate data/log existing claims override their mounts | `""` |
 | `xgt.files.subPath`         | Optional relative parent directory on the common files PVC; does not apply to separate data/log claims | `""` |
 | `xgt.persistence.data.existingClaim` | Existing data PVC mounted at `/data`; takes precedence over the files PVC | `""` |
@@ -1211,7 +1307,8 @@ The Ingress routes to the frontend service on port 80. The ingress controller te
 | `openshift.enabled`          | Create a ServiceAccount and configure the selected SCC profile | `false`   |
 | `openshift.scc`              | `anyuid`, `nonroot`, or `restricted-v2` for XGT/Mission Control/MongoDB (no elevated binding) | `anyuid` |
 | `networkPolicy.enabled`      | Restrict inter-component traffic with per-component policies     | `true`    |
-| `xgt.license.existingSecret` | Secret with key `xgtd.lic` (direct file mount)                   | `""`      |
+| `xgt.license.existingSecret` | Secret with the license file key selected by `secretKey`         | `""`      |
+| `xgt.license.secretKey`      | Key in existing and chart-generated Secrets; mounted at `/license/xgtd.lic` | `xgtd.lic` |
 | `xgt.license.data`           | Inline license content (use `--set-file`)                        | `""`      |
 
 ### License Manager Parameters
