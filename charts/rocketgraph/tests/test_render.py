@@ -196,6 +196,7 @@ class CustomizationTests(unittest.TestCase):
 
     def test_existing_files_use_only_supplied_claim_and_no_generated_files(self):
         values = yaml.safe_load((CHART / 'examples/xgt_existing_files.yaml').read_text())
+        values['xgt']['auth'] = {'basic': {'enabled': True}}
         objects = render(values)
         self.assertFalse(any(o['kind'] in ['ConfigMap', 'Secret', 'PersistentVolumeClaim',
                                            'ClusterRoleBinding'] for o in objects))
@@ -218,6 +219,7 @@ class CustomizationTests(unittest.TestCase):
             for prefix in ['', 'xgt-prod']:
                 with self.subTest(separate=separate, prefix=prefix):
                     values = self.restricted(
+                        auth={'basic': {'enabled': True}},
                         files={'existingClaim': 'files', 'subPath': prefix},
                         persistence={d: {'existingClaim': 'separate-' + d} for d in separate})
                     objects = render(values)
@@ -241,6 +243,7 @@ class CustomizationTests(unittest.TestCase):
 
     def test_separate_data_example_keeps_logs_on_files_claim(self):
         values = yaml.safe_load((CHART / 'examples/xgt_files_separate_data.yaml').read_text())
+        values['xgt']['auth'] = {'basic': {'enabled': True}}
         pod = component(render(values), 'Deployment', 'xgt')['spec']['template']['spec']
         mounts = {m['mountPath']: m for m in pod['containers'][0]['volumeMounts']}
         self.assertEqual(mounts['/data'], {'name': 'xgt-data', 'mountPath': '/data'})
@@ -249,7 +252,8 @@ class CustomizationTests(unittest.TestCase):
                          {'xgt-files', 'xgt-data'})
 
     def test_existing_configmap_and_external_license(self):
-        objects = render(self.restricted(config={'existingConfigMap': 'customer-config'}))
+        objects = render(self.restricted(config={'existingConfigMap': 'customer-config'},
+                                         auth={'basic': {'enabled': True}}))
         self.assertFalse(any(o['kind'] == 'ConfigMap' for o in objects))
         pod = component(objects, 'Deployment', 'xgt')['spec']['template']['spec']
         self.assertEqual(next(v for v in pod['volumes'] if v['name']=='xgt-config')

@@ -121,6 +121,35 @@ Backend OIDC CA cert secret name
 {{- .Values.backend.oidc.caCertExistingSecret | default (printf "%s-backend-oidc-ca" .Release.Name) }}
 {{- end }}
 
+{{/* Preserve PAM only for explicit opt-in or the stock demo configuration. */}}
+{{- define "rocketgraph.xgtBasicAuthEnabled" -}}
+{{- $auth := .Values.xgt.auth | default dict -}}
+{{- $basic := $auth.basic | default dict -}}
+{{- if kindIs "bool" $basic.enabled -}}
+  {{- $basic.enabled -}}
+{{- else -}}
+  {{- $config := .Values.xgt.extraConfig | default dict -}}
+  {{- $oidc := get $config "security.oidc" | default dict -}}
+  {{- $security := get $config "security" | default dict -}}
+  {{- $nestedOidc := dict -}}
+  {{- if kindIs "map" $security -}}
+    {{- $nestedOidc = get $security "oidc" | default dict -}}
+  {{- end -}}
+  {{- $issuer := get $config "security.oidc.issuer" -}}
+  {{- if kindIs "map" $oidc -}}
+    {{- $issuer = coalesce $issuer (get $oidc "issuer") -}}
+  {{- end -}}
+  {{- if kindIs "map" $security -}}
+    {{- $issuer = coalesce $issuer (get $security "oidc.issuer") -}}
+  {{- end -}}
+  {{- if kindIs "map" $nestedOidc -}}
+    {{- $issuer = coalesce $issuer (get $nestedOidc "issuer") -}}
+  {{- end -}}
+  {{- $opaque := or .Values.xgt.config.existingConfigMap .Values.xgt.files.existingClaim .Values.xgt.command .Values.xgt.args .Values.xgt.env .Values.xgt.extraVolumeMounts -}}
+  {{- not (or $issuer $opaque) -}}
+{{- end -}}
+{{- end -}}
+
 {{/* xGT owns its OIDC CA; backend settings remain a legacy fallback. */}}
 {{- define "rocketgraph.xgtOidcCa" -}}
 {{- $oidc := .Values.xgt.oidc | default dict -}}

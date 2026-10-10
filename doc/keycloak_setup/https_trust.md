@@ -2,7 +2,7 @@
 
 # HTTPS Trust for Keycloak
 
-Python obtains tokens over HTTPS, while xGT fetches Keycloak's discovery information and signing keys over HTTPS. Mission Control's backend and the user's browser also connect to Keycloak when used. Check each component's trust separately. The Helm examples on this page use Rocketgraph chart **0.5.0**.
+Python obtains tokens over HTTPS, while xGT fetches Keycloak's discovery information and signing keys over HTTPS. Mission Control's backend and the user's browser also connect to Keycloak when used. Check each component's trust separately. The Helm examples on this page use Rocketgraph chart **0.5.1**.
 
 Skip the corresponding CA setting when that application already trusts the issuer's certificate. For a private company CA, the simplest Helm setup is an approved PEM bundle mounted through a Secret. Trust on an OpenShift node or in a browser does not establish trust inside the stock containers.
 
@@ -49,13 +49,16 @@ Download [keycloak_ca_values.yaml](examples/keycloak_ca_values.yaml) or save thi
 # Simplest CA setup for Keycloak using a private company CA.
 # Stock xGT/MC images do not include your company's private CA.
 # Skip only if their application trust stores already trust Keycloak HTTPS.
-# Requires Rocketgraph chart 0.5.0.
+# Requires Rocketgraph chart 0.5.1 for the PAM login restriction.
 # Existing ConfigMap/files PVC: set ca_cert in the mounted xgtd.conf;
 # omit keycloak_values.yaml from the Helm command and keep this overlay.
 # First create Secret keycloak-ca with key oidc-ca.pem in the release namespace.
 # Apply after the existing deployment values and keycloak_values.yaml.
 # This mounts the public CA bundle in xGT and the Mission Control backend.
 xgt:
+  auth:
+    basic:
+      enabled: false
   oidc:
     caCertExistingSecret: keycloak-ca
 # Omit this backend section when Mission Control is disabled.
@@ -112,6 +115,9 @@ Download [openshift_ca_values.yaml](examples/openshift_ca_values.yaml) and apply
 # Apply after the deployment values and keycloak_values.yaml.
 # Existing config/PVC: remove extraConfig and edit ca_cert in the mounted file.
 xgt:
+  auth:
+    basic:
+      enabled: false
   oidc:
     caCert: ""
     caCertExistingSecret: ""

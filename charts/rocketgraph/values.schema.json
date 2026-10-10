@@ -1797,6 +1797,27 @@
               }
             }
           }
+        },
+        "auth": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Control the independent PAM/basic authentication path",
+          "properties": {
+            "basic": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "enabled": {
+                  "type": [
+                    "boolean",
+                    "null"
+                  ],
+                  "default": null,
+                  "description": "false blocks PAM; true keeps the image PAM policy. null blocks PAM for OIDC, external configuration, or custom startup/mounts and preserves the stock demo otherwise."
+                }
+              }
+            }
+          }
         }
       }
     },

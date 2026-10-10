@@ -820,6 +820,25 @@ The test release's Mission Control can connect to all three endpoints. Set its `
 
 `missionControl.enabled=false` suppresses frontend/backend workloads and their resources, but does not disable MongoDB automatically. xGT-only releases still honor `backend.oidc.caCertExistingSecret` or `backend.oidc.caCert` for the shared OIDC CA mount. All normal `xgt.*` settings continue to apply.
 
+### PAM and Basic Authentication Policy
+
+The standard XGT images use `pam_permit.so`, which accepts arbitrary usernames and passwords. Configuring OIDC, Kerberos, or certificate authentication in XGT does not disable that independent PAM login path. Restrict it for deployments that require token authentication:
+
+```yaml
+xgt:
+  auth:
+    basic:
+      enabled: false
+```
+
+The chart mounts a read-only `pam_deny.so` policy at `/etc/pam.d/xgtd`. It blocks PAM authentication, including basic/password login, while the independent token authentication path remains available. This requires no root startup command and works with `restricted-v2`, existing configuration ConfigMaps, and files PVCs. It does not disable independently configured Kerberos or standard PKI authentication; custom certificate authentication that uses PAM is blocked too.
+
+The default `null` selects the policy automatically. PAM is blocked when chart values supply an OIDC issuer, an existing configuration ConfigMap or files PVC, or custom XGT commands, arguments, environment variables, or mounts. Helm cannot inspect externally supplied configuration. The stock demo without those settings retains the image's PAM configuration. Set `false` explicitly for token deployments so the policy remains independent of how the issuer is configured.
+
+Set `xgt.auth.basic.enabled: true` only when PAM authentication is intended and its configuration has been reviewed. This keeps the image's PAM policy; it does **not** make that policy secure. For direct LDAP, `xgt.ldap.enabled` starts the image's SSSD integration and changes PAM to `pam_sss.so`; it requires PAM to remain enabled. When reusing host SSSD, supply the appropriate PAM configuration as well as the sockets. If both OIDC and PAM are intentionally allowed, explicitly set `true` and ensure PAM validates credentials instead of using `pam_permit.so`.
+
+Upgrading from an earlier chart can block PAM for deployments using external configuration or custom startup/mounts. Token deployments should keep the restriction. Existing PAM/SSSD deployments must set `true` explicitly and retain their administrator-managed PAM policy. Helm changes to this setting roll the XGT pod. Verify that the intended token login succeeds and that `xgt.BasicAuth("xgtd", "")` is rejected; authentication and TLS are separate requirements.
+
 ### LDAP Authentication
 
 xGT supports LDAP authentication via PAM/SSSD. When enabled, the chart mounts an SSSD
@@ -944,11 +963,13 @@ and `MC_OIDC_*` configuration names for both integrations.
 
 To enable OIDC login, set `backend.env.XGT_AUTH_TYPES` and configure `xgt.extraConfig.security.oidc`. The backend discovers the issuer, client ID, and scopes from xGT when the issuer or client ID is unset. Supply confidential-client secrets and private CA certificates separately. Override the client ID when Mission Control has its own client; override `frontendUrl` only when the derived public URL is wrong.
 
+Set `xgt.auth.basic.enabled: false` to reject the container's independent PAM/basic login path. Choosing `XGT_AUTH_TYPES` changes Mission Control's login choices; it does not restrict direct Python connections. See [PAM and Basic Authentication Policy](#pam-and-basic-authentication-policy).
+
 See the [OIDC configuration guide](../../doc/oidc_configuration.md) for how the redirect URI is derived, the full environment-variable reference, and the security allowlists (`MC_XGT_ALLOWED_HOSTS`, `MC_OIDC_ALLOWED_ORIGINS`) — that guide includes Kubernetes and OpenShift examples, such as the wildcard patterns needed for StatefulSet pod hostnames and cluster subdomains.
 
 #### Keycloak
 
-For screenshots, token mappers, Python login scripts and optional LDAP/CA setup, follow [Keycloak Setup for xGT](../../doc/keycloak_setup/README.md). Its Helm examples require chart **0.5.0**; the [Mission Control page](../../doc/keycloak_setup/mission_control.md) includes the client registration, Secret, values and Route manifests.
+For screenshots, token mappers, Python login scripts and optional LDAP/CA setup, follow [Keycloak Setup for xGT](../../doc/keycloak_setup/README.md). Its Helm examples require chart **0.5.1**; the [Mission Control page](../../doc/keycloak_setup/mission_control.md) includes the client registration, Secret, values and Route manifests.
 
 Register a confidential client named `mission-control` with Standard flow enabled and callback `https://mc.example.com/api/login/oidc/callback`. Store its secret in `mission-control-oidc` under key `MC_OIDC_CLIENT_SECRET`. Keep the Python browser client `xgtd-client` public with PKCE `S256` and callback `http://127.0.0.1:8765/callback`. Mission Control 2.7.0 does not send PKCE, so do not require it on the confidential client.
 
@@ -962,6 +983,9 @@ backend:
     existingSecret: mission-control-oidc
 
 xgt:
+  auth:
+    basic:
+      enabled: false
   extraConfig:
     security.oidc:
       validation_mode: jwt
@@ -1000,6 +1024,9 @@ backend:
     frontendUrl: https://mc.apps.cluster.example.com
 
 xgt:
+  auth:
+    basic:
+      enabled: false
   extraConfig:
     security.oidc:
       issuer: https://oauth-openshift.apps.cluster.example.com
@@ -1270,6 +1297,7 @@ The Ingress routes to the frontend service on port 80. The ingress controller te
 | Parameter                   | Description                          | Default        |
 |-----------------------------|--------------------------------------|----------------|
 | `xgt.enabled`               | Deploy xGT as part of the release    | `true`         |
+| `xgt.auth.basic.enabled`   | `false`: block PAM/basic login; `true`: keep image PAM policy; `null`: block for OIDC/external configuration/custom startup or mounts, otherwise retain demo behavior | `null` |
 | `xgt.hostname`              | Fixed container OS hostname for licensing; does not change the pod or Service name | `""` |
 | `xgt.oidc.caCert`           | Inline CA PEM for xGT OIDC HTTPS requests; creates an xGT CA Secret | `""` |
 | `xgt.oidc.caCertExistingSecret` | Existing xGT OIDC CA Secret; preferred over inline CA. Uses legacy backend CA settings if both xGT sources are empty | `""` |

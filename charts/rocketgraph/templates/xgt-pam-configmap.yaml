@@ -1,0 +1,15 @@
+{{- if and .Values.xgt.enabled (ne (include "rocketgraph.xgtBasicAuthEnabled" .) "true") }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "rocketgraph.fullname.xgt" . }}-pam
+  labels:
+    app: xgt
+    {{- include "rocketgraph.labels" . | nindent 4 }}
+data:
+  xgtd: |
+    # Token authentication is independent of the PAM login path.
+    auth requisite pam_deny.so
+    account requisite pam_deny.so
+    session requisite pam_deny.so
+{{- end }}

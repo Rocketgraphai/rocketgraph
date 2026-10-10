@@ -1,0 +1,108 @@
+"""Verify that token deployments cannot retain passwordless PAM login."""
+import unittest
+
+from test_render import component, render
+
+
+class PamAuthTests(unittest.TestCase):
+  def assert_pam_denied(self, values):
+    objects = render(values)
+    config = next(obj for obj in objects if obj["kind"] == "ConfigMap"
+                  and "xgtd" in obj.get("data", {}))
+    self.assertIn("auth requisite pam_deny.so", config["data"]["xgtd"])
+    pod = component(objects, "Deployment", "xgt")["spec"]["template"]
+    self.assertIn("checksum/pam", pod["metadata"]["annotations"])
+    container = pod["spec"]["containers"][0]
+    mount = next(item for item in container["volumeMounts"]
+                 if item["mountPath"] == "/etc/pam.d/xgtd")
+    self.assertTrue(mount["readOnly"])
+    volume = next(item for item in pod["spec"]["volumes"]
+                  if item["name"] == mount["name"])
+    self.assertEqual(volume["configMap"]["name"],
+                     config["metadata"]["name"])
+    self.assertEqual(mount["subPath"], "xgtd")
+
+  def test_oidc_issuer_blocks_pam_for_supported_config_forms(self):
+    for config in [
+      {"security.oidc": {"issuer": "https://idp.example.com"}},
+      {"security": {"oidc": {"issuer": "https://idp.example.com"}}},
+      {"security": {"oidc.issuer": "https://idp.example.com"}},
+      {"security.oidc.issuer": "https://idp.example.com"}
+    ]:
+      with self.subTest(config = config):
+        self.assert_pam_denied({"xgt": {"extraConfig": config}})
+
+  def test_external_config_and_custom_startup_default_to_denial(self):
+    for values in [
+      {"config": {"existingConfigMap": "company-config"}},
+      {"files": {"existingClaim": "company-files"}},
+      {"command": ["/opt/xgtd/bin/xgtd"]},
+      {"args": ["-Dsecurity.oidc.issuer=https://idp.example.com"]},
+      {"env": [{"name": "CUSTOM_CONFIG", "value": "/custom/conf"}]}
+    ]:
+      with self.subTest(values = values):
+        self.assert_pam_denied({"xgt": values})
+
+  def test_explicit_false_and_restricted_profile_mount_deny_policy(self):
+    values = {"xgt": {"auth": {"basic": {"enabled": False}}}}
+    self.assert_pam_denied(values)
+    values.update({"openshift": {"enabled": True, "scc": "restricted-v2"},
+                   "fips": {"enabled": True}})
+    values["xgt"]["license"] = {"existingSecret": "test-license"}
+    self.assert_pam_denied(values)
+
+  def test_default_and_explicit_opt_in_keep_image_pam_configuration(self):
+    for values in [{}, {"xgt": {
+      "extraConfig": {"security.oidc": {"issuer": "https://idp.example.com"}},
+      "auth": {"basic": {"enabled": True}}
+    }}]:
+      with self.subTest(values = values):
+        objects = render(values)
+        self.assertFalse(any("xgtd" in obj.get("data", {})
+                             for obj in objects if obj["kind"] == "ConfigMap"))
+        pod = component(objects, "Deployment", "xgt")["spec"]["template"]
+        self.assertNotIn("checksum/pam", pod["metadata"]["annotations"])
+        self.assertFalse(any(item["mountPath"] == "/etc/pam.d/xgtd"
+                             for item in pod["spec"]["containers"][0]
+                             ["volumeMounts"]))
+
+  def test_disabled_xgt_omits_pam_resources(self):
+    objects = render({"missionControl": {"enabled": False},
+                      "xgt": {"enabled": False,
+                              "auth": {"basic": {"enabled": False}}}})
+    self.assertFalse(any("xgtd" in obj.get("data", {}) for obj in objects
+                         if obj["kind"] == "ConfigMap"))
+
+  def test_pam_denial_rejects_sssd_ldap_configuration(self):
+    message = render({"xgt": {
+      "auth": {"basic": {"enabled": False}},
+      "ldap": {"enabled": True, "uri": "ldaps://ldap.example.com",
+               "baseDn": "dc=example,dc=com"}
+    }}, fails = True)
+    self.assertIn("xgt.auth.basic.enabled=true", message)
+
+  def test_existing_ldap_configuration_can_explicitly_enable_pam(self):
+    objects = render({"xgt": {
+      "auth": {"basic": {"enabled": True}},
+      "config": {"existingConfigMap": "company-config"},
+      "ldap": {"enabled": True, "uri": "ldaps://ldap.example.com",
+               "baseDn": "dc=example,dc=com"}
+    }})
+    self.assertFalse(any("xgtd" in obj.get("data", {}) for obj in objects
+                         if obj["kind"] == "ConfigMap"))
+
+  def test_pam_policy_cannot_be_shadowed_by_extra_mounts(self):
+    for path in ["/", "/etc", "/etc/pam.d", "/etc/pam.d/xgtd"]:
+      with self.subTest(path = path):
+        message = render({"xgt": {
+          "auth": {"basic": {"enabled": False}},
+          "extraVolumes": [{"name": "custom", "emptyDir": {}}],
+          "extraVolumeMounts": [{"name": "custom", "mountPath": path}]
+        }}, fails = True)
+        self.assertIn("PAM", message)
+
+  def test_string_boolean_is_rejected(self):
+    message = render({"xgt": {
+      "auth": {"basic": {"enabled": "false"}}
+    }}, fails = True)
+    self.assertIn("enabled", message)

@@ -1,6 +1,7 @@
 {{- if .Values.xgt.enabled }}
 {{- $tlsKeys := include "rocketgraph.xgtTlsKeys" . | fromYaml }}
 {{- $oidcCa := include "rocketgraph.xgtOidcCa" . | fromYaml }}
+{{- $basicAuth := eq (include "rocketgraph.xgtBasicAuthEnabled" .) "true" }}
 {{- $restricted := and .Values.openshift.enabled (eq .Values.openshift.scc "restricted-v2") }}
 {{- $files := .Values.xgt.files.existingClaim }}
 {{- $direct := or $restricted $files }}
@@ -25,6 +26,9 @@ spec:
         app: xgt
         app.kubernetes.io/instance: {{ .Release.Name }}
       annotations:
+        {{- if not $basicAuth }}
+        checksum/pam: {{ include (print $.Template.BasePath "/xgt-pam-configmap.yaml") . | sha256sum }}
+        {{- end }}
         {{- if not (or $files .Values.xgt.config.existingConfigMap) }}
         checksum/config: {{ include (print $.Template.BasePath "/xgt-configmap.yaml") . | sha256sum }}
         {{- end }}
@@ -186,6 +190,12 @@ spec:
               subPath: {{ $oidcCa.key | quote }}
               readOnly: true
             {{- end }}
+            {{- if not $basicAuth }}
+            - name: xgt-pam
+              mountPath: /etc/pam.d/xgtd
+              subPath: xgtd
+              readOnly: true
+            {{- end }}
             {{- with .Values.xgt.extraVolumeMounts }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
@@ -203,6 +213,12 @@ spec:
       {{- end }}
       restartPolicy: Always
       volumes:
+        {{- if not $basicAuth }}
+        - name: xgt-pam
+          configMap:
+            name: {{ include "rocketgraph.fullname.xgt" . }}-pam
+            defaultMode: 0444
+        {{- end }}
         {{- if $files }}
         - name: xgt-files
           persistentVolumeClaim:

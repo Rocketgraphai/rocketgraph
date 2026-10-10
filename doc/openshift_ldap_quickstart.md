@@ -4,7 +4,7 @@ Use OpenShift to authenticate LDAP users, then map their OpenShift groups to xGT
 
 Experimental: OIDC authentication may change in future releases.
 
-This checklist is for the OpenShift and xGT administrators. It assumes an existing LDAP directory, permission to configure OpenShift authentication, and an xGT 2.7.1 deployment using version **0.5.0** of the [Rocketgraph Helm chart](https://github.com/Rocketgraphai/rocketgraph/tree/main/charts/rocketgraph). Replace example hostnames, namespace `xgt`, and group names with your own. For the full configuration reference, see [xGT OpenShift reference](https://docs.rocketgraph.com/sysadmin_guide/user_authentication.html#openshift).
+This checklist is for the OpenShift and xGT administrators. It assumes an existing LDAP directory, permission to configure OpenShift authentication, and an xGT 2.7.1 deployment using version **0.5.1** of the [Rocketgraph Helm chart](https://github.com/Rocketgraphai/rocketgraph/tree/main/charts/rocketgraph). Replace example hostnames, namespace `xgt`, and group names with your own. For the full configuration reference, see [xGT OpenShift reference](https://docs.rocketgraph.com/sysadmin_guide/user_authentication.html#openshift).
 
 For a complete test deployment with LDAP provider and group-sync YAML, follow the [OpenShift test-server guide](openshift_test_server/README.md). For Keycloak-issued tokens instead, see [Keycloak Setup](keycloak_setup/README.md).
 
@@ -46,6 +46,9 @@ Merge these settings into the deployment's Helm values and apply them using the 
 
 ``` yaml
 xgt:
+  auth:
+    basic:
+      enabled: false  # Require token authentication instead of permissive PAM.
   hostname: demo-xgt-test  # Replace with your licensed hostname.
   image:
     tag: 2.7.1
@@ -56,7 +59,6 @@ xgt:
   config:
     grouplabelCsv: |
       group,label
-      xgtd,xgtadmin
       xgt-admins,xgtadmin
       xgt-users,data-users
     labelCsv: |

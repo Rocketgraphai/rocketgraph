@@ -11,7 +11,7 @@ OIDC ID tokens or a standard OIDC UserInfo endpoint.
 
 **Deployment:** Helm manages XGT, Mission Control and MongoDB. Set `xgt.hostname: demo-xgt-test` for the licensed container hostname. The Kubernetes pod name remains generated. Optional separate releases provide dev and prod XGT servers with their own configuration and storage, sharing Mission Control.
 
-**Requires chart 0.4.0 or later; the commands below use the chart in this repository.** Rendering has been checked, and an isolated XGT 2.7.1 FIPS-image release passed license validation, OpenShift token login and a query. Its fixed hostname and a file on its data volume survived pod replacement. The complete installation below has not been deployed to a fresh cluster. The [deployment planning guide](../openshift_fips_deployment.md) covers the architecture and FIPS verification responsibilities.
+**Requires chart 0.5.1 or later; the commands below use the chart in this repository.** Rendering has been checked, and an isolated XGT 2.7.1 FIPS-image release passed license validation, OpenShift token login and a query. Its fixed hostname and a file on its data volume survived pod replacement. The complete installation below has not been deployed to a fresh cluster. The [deployment planning guide](../openshift_fips_deployment.md) covers the architecture and FIPS verification responsibilities.
 
 The full chart was also tested under `restricted-v2` with namespace-assigned UIDs, Mission Control HTTPS/mTLS, MongoDB TLS/mTLS and encryption at rest, and XGT TLS/token authentication. This used fresh PVCs and temporary test certificates; existing-volume migration, optional backend plugin installation and end-to-end FIPS compliance require separate validation.
 
@@ -28,7 +28,7 @@ The full chart was also tested under `restricted-v2` with namespace-assigned UID
 | [route.yaml](route.yaml) | Public Mission Control hostname |
 | [login.py](login.py) | Ready-to-run browser/token login and data-permission demonstration |
 
-Example names are `xgt-demo` (application namespace), `xgt-demo-jobs` (automation namespace), `xgt-demo-ldap-sync` (sync namespace), and `rocketgraph` (Helm release). Keep these names for the walkthrough. All commands run from this directory in **Bash**, with `oc` already logged in as an authorized administrator. Use an approved repository revision containing chart 0.4.0 or later.
+Example names are `xgt-demo` (application namespace), `xgt-demo-jobs` (automation namespace), `xgt-demo-ldap-sync` (sync namespace), and `rocketgraph` (Helm release). Keep these names for the walkthrough. All commands run from this directory in **Bash**, with `oc` already logged in as an authorized administrator. Use an approved repository revision containing chart 0.5.1 or later.
 
 ## 1. Confirm the Prerequisites
 

@@ -4,13 +4,13 @@ Use Keycloak to sign in as a normal user or an automation service account. Keycl
 
 Experimental: OIDC authentication may change in future releases.
 
-Start with xGT 2.7.1 and an existing Keycloak realm. Python must reach xGT; Python, xGT and the login browser must reach the Keycloak HTTPS endpoint. Replace the example hostnames and realm with your own. Screenshots show a test realm; settings can appear in different places in other Keycloak versions. The Helm examples use Rocketgraph chart **0.5.0**.
+Start with xGT 2.7.1 and an existing Keycloak realm. Python must reach xGT; Python, xGT and the login browser must reach the Keycloak HTTPS endpoint. Replace the example hostnames and realm with your own. Screenshots show a test realm; settings can appear in different places in other Keycloak versions. The Helm examples use Rocketgraph chart **0.5.1**.
 
 The minimum setup is:
 
 1.  Create the Keycloak client for the login method you need.
 1.  Add audience `xgt` to its access tokens. For group-based permissions, include `groups` and assign the user or service account to a group.
-1.  Configure xGT with the issuer, audience and JWT validation, then map groups to xGT labels.
+1.  Configure xGT with the issuer, audience and JWT validation, map groups to xGT labels, and disable the independent PAM/basic login path.
 1.  If a component does not trust Keycloak HTTPS, configure its CA trust.
 1.  Run the matching Python login example below and verify its labels.
 
@@ -20,7 +20,7 @@ The Keycloak steps and Python examples also apply outside OpenShift. The Helm, `
 
 Read this page first. Optional steps: [LDAP federation](ldap.md), [HTTPS trust](https_trust.md), and [Mission Control](mission_control.md). The [examples](examples/) are included inline and as downloadable files. Screenshots can be clicked to view their full size.
 
-For the Helm commands, use a checkout or archive containing Rocketgraph chart **0.5.0** and run from its `doc/keycloak_setup` directory. The chart path is `../../charts/rocketgraph`; if your chart package is stored elsewhere, replace that path with your local 0.5.0 chart. Edit the placeholders in the relevant examples and supply the path to your existing deployment values file.
+For the Helm commands, use a checkout or archive containing Rocketgraph chart **0.5.1** and run from its `doc/keycloak_setup` directory. The chart path is `../../charts/rocketgraph`; if your chart package is stored elsewhere, replace that path with your local 0.5.1 chart. Edit the placeholders in the relevant examples and supply the path to your existing deployment values file.
 
 ## 1. Create the Clients You Need
 
@@ -149,7 +149,6 @@ In `grouplabel.csv`, map the selected Keycloak groups to xGT labels:
 
 ``` text
 group,label
-xgtd,xgtadmin
 rocketgraph-ldap-admins,xgtadmin
 rocketgraph-ldap-users,data-users
 rocketgraph-automation,automation
@@ -175,12 +174,14 @@ Download [keycloak_values.yaml](examples/keycloak_values.yaml) and merge it into
 # images, storage and TLS settings. Update existing mounted config files instead
 # if xgt.config.existingConfigMap or a files PVC supplies the configuration.
 xgt:
+  auth:
+    basic:
+      enabled: false  # Reject the independent PAM/password login path.
   config:
     # Reuse your existing groups and labels; these names are examples.
     # The rocketgraph-automation group and automation label are optional.
     grouplabelCsv: |
       group,label
-      xgtd,xgtadmin
       rocketgraph-ldap-admins,xgtadmin
       rocketgraph-ldap-users,data-users
       rocketgraph-automation,automation
@@ -204,7 +205,7 @@ xgt:
       # or the OpenShift injected ConfigMap alternative openshift_ca_values.yaml.
 ```
 
-Commands assume version **0.5.0** of the [Rocketgraph chart](https://github.com/Rocketgraphai/rocketgraph/tree/main/charts/rocketgraph) is available locally at `../../charts/rocketgraph`. Use your actual chart path, release and namespace, and include all existing deployment values files:
+Commands assume version **0.5.1** of the [Rocketgraph chart](https://github.com/Rocketgraphai/rocketgraph/tree/main/charts/rocketgraph) is available locally at `../../charts/rocketgraph`. Use your actual chart path, release and namespace, and include all existing deployment values files:
 
 ``` bash
 helm upgrade YOUR_RELEASE ../../charts/rocketgraph -n YOUR_NAMESPACE \
@@ -212,6 +213,8 @@ helm upgrade YOUR_RELEASE ../../charts/rocketgraph -n YOUR_NAMESPACE \
 ```
 
 If an existing ConfigMap or files PVC supplies `xgtd.conf`, update its OIDC configuration and CSV files directly instead of using this overlay. The chart rejects `xgt.extraConfig` and inline CSV settings alongside external configuration. For a hostname-bound license, retain `xgt.hostname` with a hostname covered by the license; no custom StatefulSet is needed.
+
+Keep `xgt.auth.basic.enabled: false` in the deployment values even with mounted configuration. This mounts a read-only PAM policy that rejects basic login. The standard container's `pam_permit.so` accepts arbitrary credentials; configuring Keycloak or hiding basic login in Mission Control does not disable that server path. For a non-Helm deployment, have the administrator replace `/etc/pam.d/xgtd` with a rejecting PAM policy when token authentication is required. After deploying, confirm token login works and a basic login such as `xgt.BasicAuth("xgtd", "")` fails.
 
 For OpenShift's non-root profile, retain `openshift.enabled: true` and `openshift.scc: restricted-v2`. Select FIPS images with `fips.enabled: true` and keep image tags without a `-fips` suffix; the chart appends it. Mission Control currently requires FIPS images for this profile. Configure each connection's TLS separately. Image selection alone does not establish FIPS compliance, and existing PVC contents must be writable by the admitted UID and volume group. See the chart's restricted-v2 and FIPS sections for deployment requirements; these authentication settings do not replace them.
 

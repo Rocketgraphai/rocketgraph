@@ -1,5 +1,5 @@
 # Companion to openshift_fips_deployment.md.
-# Requires chart 0.4.0 or later.
+# Requires chart 0.5.1 or later.
 # Review template, not a complete production deployment: supply Secrets,
 # licensed workload hostname, storage/sizing, Route, and approved TLS topology.
 # Versions match the lab image test; approve exact versions/digests for rollout.
@@ -10,6 +10,9 @@ fips:
   enabled: true
 
 xgt:
+  auth:
+    basic:
+      enabled: false  # Reject PAM/password login; authenticate with tokens.
   hostname: demo-xgt-test
   image:
     tag: 2.7.1
@@ -22,7 +25,6 @@ xgt:
   config:
     grouplabelCsv: |
       group,label
-      xgtd,xgtadmin
       xgt-admins,xgtadmin
       xgt-users,data-users
       system:serviceaccounts:xgt-jobs,automation
