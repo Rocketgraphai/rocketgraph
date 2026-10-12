@@ -10,6 +10,9 @@ openshift:
 fips:
   enabled: true
 xgt:
+  auth:
+    pam:
+      enabled: false
   hostname: demo-xgt-test
   image:
     tag: 2.7.1

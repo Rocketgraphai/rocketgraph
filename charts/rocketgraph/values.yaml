@@ -246,12 +246,11 @@ xgt:
   enabled: true  # Set to false to use an external xGT server
   auth:
     pam:
-      # null: block PAM when OIDC, external config or custom startup/mounts
-      # are supplied; otherwise keep the image's PAM configuration.
       # false: mount pam_deny.so, blocking password/LDAP, custom PKI and
-      # trusted-proxy login. true: keep the image/admin PAM policy.
+      # trusted-proxy login. true (default) or null: keep the image/admin
+      # PAM policy. OIDC, external config and custom mounts do not change it.
       # Standard images use pam_permit.so unless PAM has been configured.
-      enabled: null
+      enabled: true
   # Stable OS hostname for hostname-bound licenses; pod metadata.name still varies.
   hostname: ""
   # Use one pre-populated PVC for conf/, license/, data/, log/.

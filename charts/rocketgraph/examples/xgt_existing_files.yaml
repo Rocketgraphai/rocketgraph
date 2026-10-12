@@ -12,6 +12,9 @@ openshift:
 fips:
   enabled: true
 xgt:
+  auth:
+    pam:
+      enabled: false  # The supplied example configuration uses OpenShift OAuth.
   hostname: demo-xgt-prod
   image:
     tag: 2.7.1

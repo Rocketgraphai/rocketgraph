@@ -165,6 +165,9 @@ By default, the chart generates configuration in a ConfigMap, mounts license/TLS
 ```yaml
 xgt:
   hostname: demo-xgt-prod
+  auth:
+    pam:
+      enabled: false  # The supplied example configuration uses OpenShift OAuth.
   files:
     existingClaim: xgt-files
     subPath: xgt-prod
@@ -833,15 +836,15 @@ xgt:
 
 The chart mounts a read-only `pam_deny.so` policy at `/etc/pam.d/xgtd`. It blocks all authentication paths that use PAM: basic/password login (including LDAP/SSSD), custom PKI, and trusted-proxy login. The independent token authentication path remains available. This requires no root startup command and works with `restricted-v2`, existing configuration ConfigMaps, and files PVCs. It does not disable independently configured Kerberos or standard PKI authentication.
 
-The default `null` selects the policy automatically. PAM is blocked when chart values supply an OIDC issuer, an existing configuration ConfigMap or files PVC, or custom XGT commands, arguments, environment variables, or mounts. Helm cannot inspect externally supplied configuration. The stock demo without those settings retains the image's PAM configuration. Set `false` explicitly for token deployments so the policy remains independent of how the issuer is configured.
+The default `true` preserves the image's or administrator's PAM policy. An omitted setting or `null` also preserves that policy. The chart does not infer authentication policy from OIDC settings, existing configuration ConfigMaps, files PVCs, or custom commands, arguments, environment variables, or mounts. Set `false` explicitly for deployments that require token authentication.
 
 The setting is named `pam` because the rejecting policy applies to every PAM-based method; it cannot disable only username/password login while retaining custom PKI or trusted-proxy login. Replace the preliminary `xgt.auth.basic.enabled` name with `xgt.auth.pam.enabled`; the old name is rejected by values validation.
 
-Set `xgt.auth.pam.enabled: true` only when PAM authentication is intended and its configuration has been reviewed. This keeps the image's PAM policy; it does **not** make that policy secure. For direct LDAP, `xgt.ldap.enabled` starts the image's SSSD integration and changes PAM to `pam_sss.so`; it requires PAM to remain enabled. When reusing host SSSD, supply the appropriate PAM configuration as well as the sockets. If both OIDC and PAM are intentionally allowed, explicitly set `true` and ensure PAM validates credentials instead of using `pam_permit.so`.
+With `xgt.auth.pam.enabled: true`, configure and review the active PAM policy; preserving it does **not** make `pam_permit.so` secure. For direct LDAP, `xgt.ldap.enabled` starts the image's SSSD integration and changes PAM to `pam_sss.so`; it requires PAM to remain enabled. When reusing host SSSD, supply the appropriate PAM configuration as well as the sockets. If both OIDC and PAM are intentionally allowed, ensure PAM validates credentials instead of using `pam_permit.so`.
 
-With explicit PAM opt-in, an administrator-managed policy can use an extra volume named `xgt-pam`; the chart reserves that name only when it mounts its own rejecting policy. With PAM blocked, extra mounts cannot replace `/etc/pam.d/xgtd` or a parent directory. Mount paths are normalized for collision checks, so alternate spellings such as `/etc//pam.d` do not bypass the restriction.
+When PAM is preserved, an administrator-managed policy can use an extra volume named `xgt-pam`; the chart reserves that name only when it mounts its own rejecting policy. With PAM blocked, extra mounts cannot replace `/etc/pam.d/xgtd` or a parent directory. Mount paths are normalized for collision checks, so alternate spellings such as `/etc//pam.d` do not bypass the restriction.
 
-Upgrading from an earlier chart can block PAM for deployments using external configuration or custom startup/mounts. Token deployments should keep the restriction. Existing PAM/SSSD deployments must set `true` explicitly and retain their administrator-managed PAM policy. Helm changes to this setting roll the XGT pod. Verify that the intended token login succeeds and that `xgt.BasicAuth("xgtd", "")` is rejected; authentication and TLS are separate requirements.
+If you used the preliminary automatic policy, set `xgt.auth.pam.enabled: false` before upgrading to retain PAM rejection; `null` no longer selects a policy automatically. Helm changes to this setting roll the XGT pod. For token-only deployments, verify that the intended token login succeeds and that `xgt.BasicAuth("xgtd", "")` is rejected; authentication and TLS are separate requirements.
 
 ### LDAP Authentication
 
@@ -1301,7 +1304,7 @@ The Ingress routes to the frontend service on port 80. The ingress controller te
 | Parameter                   | Description                          | Default        |
 |-----------------------------|--------------------------------------|----------------|
 | `xgt.enabled`               | Deploy xGT as part of the release    | `true`         |
-| `xgt.auth.pam.enabled`   | `false`: block all PAM-based login (password/LDAP, custom PKI, trusted proxy); `true`: keep image PAM policy; `null`: block for OIDC/external configuration/custom startup or mounts, otherwise retain demo behavior | `null` |
+| `xgt.auth.pam.enabled`   | `false`: block all PAM-based login (password/LDAP, custom PKI, trusted proxy); `true`, omitted, or `null`: preserve the image/admin PAM policy without automatic detection | `true` |
 | `xgt.hostname`              | Fixed container OS hostname for licensing; does not change the pod or Service name | `""` |
 | `xgt.oidc.caCert`           | Inline CA PEM for xGT OIDC HTTPS requests; creates an xGT CA Secret | `""` |
 | `xgt.oidc.caCertExistingSecret` | Existing xGT OIDC CA Secret; preferred over inline CA. Uses legacy backend CA settings if both xGT sources are empty | `""` |

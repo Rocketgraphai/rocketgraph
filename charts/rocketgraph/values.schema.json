@@ -1812,8 +1812,8 @@
                     "boolean",
                     "null"
                   ],
-                  "default": null,
-                  "description": "false blocks PAM; true keeps the image PAM policy. null blocks PAM for OIDC, external configuration, or custom startup/mounts and preserves the stock demo otherwise."
+                  "default": true,
+                  "description": "Only explicit false blocks PAM. true (default), null, or an omitted setting keeps the image/admin PAM policy, regardless of OIDC, external configuration, or custom startup/mounts."
                 }
               }
             }
