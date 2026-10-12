@@ -9,7 +9,7 @@
 # This mounts the public CA bundle in xGT and the Mission Control backend.
 xgt:
   auth:
-    basic:
+    pam:
       enabled: false
   oidc:
     caCertExistingSecret: keycloak-ca

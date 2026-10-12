@@ -8,7 +8,7 @@ fips:
   enabled: true
 xgt:
   auth:
-    basic:
+    pam:
       enabled: false  # Reject PAM/password login; authenticate with tokens.
   enabled: true
   hostname: demo-xgt-test

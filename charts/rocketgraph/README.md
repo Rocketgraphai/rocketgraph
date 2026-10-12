@@ -827,15 +827,17 @@ The standard XGT images use `pam_permit.so`, which accepts arbitrary usernames a
 ```yaml
 xgt:
   auth:
-    basic:
+    pam:
       enabled: false
 ```
 
-The chart mounts a read-only `pam_deny.so` policy at `/etc/pam.d/xgtd`. It blocks PAM authentication, including basic/password login, while the independent token authentication path remains available. This requires no root startup command and works with `restricted-v2`, existing configuration ConfigMaps, and files PVCs. It does not disable independently configured Kerberos or standard PKI authentication; custom certificate authentication that uses PAM is blocked too.
+The chart mounts a read-only `pam_deny.so` policy at `/etc/pam.d/xgtd`. It blocks all authentication paths that use PAM: basic/password login (including LDAP/SSSD), custom PKI, and trusted-proxy login. The independent token authentication path remains available. This requires no root startup command and works with `restricted-v2`, existing configuration ConfigMaps, and files PVCs. It does not disable independently configured Kerberos or standard PKI authentication.
 
 The default `null` selects the policy automatically. PAM is blocked when chart values supply an OIDC issuer, an existing configuration ConfigMap or files PVC, or custom XGT commands, arguments, environment variables, or mounts. Helm cannot inspect externally supplied configuration. The stock demo without those settings retains the image's PAM configuration. Set `false` explicitly for token deployments so the policy remains independent of how the issuer is configured.
 
-Set `xgt.auth.basic.enabled: true` only when PAM authentication is intended and its configuration has been reviewed. This keeps the image's PAM policy; it does **not** make that policy secure. For direct LDAP, `xgt.ldap.enabled` starts the image's SSSD integration and changes PAM to `pam_sss.so`; it requires PAM to remain enabled. When reusing host SSSD, supply the appropriate PAM configuration as well as the sockets. If both OIDC and PAM are intentionally allowed, explicitly set `true` and ensure PAM validates credentials instead of using `pam_permit.so`.
+The setting is named `pam` because the rejecting policy applies to every PAM-based method; it cannot disable only username/password login while retaining custom PKI or trusted-proxy login. Replace the preliminary `xgt.auth.basic.enabled` name with `xgt.auth.pam.enabled`; the old name is rejected by values validation.
+
+Set `xgt.auth.pam.enabled: true` only when PAM authentication is intended and its configuration has been reviewed. This keeps the image's PAM policy; it does **not** make that policy secure. For direct LDAP, `xgt.ldap.enabled` starts the image's SSSD integration and changes PAM to `pam_sss.so`; it requires PAM to remain enabled. When reusing host SSSD, supply the appropriate PAM configuration as well as the sockets. If both OIDC and PAM are intentionally allowed, explicitly set `true` and ensure PAM validates credentials instead of using `pam_permit.so`.
 
 Upgrading from an earlier chart can block PAM for deployments using external configuration or custom startup/mounts. Token deployments should keep the restriction. Existing PAM/SSSD deployments must set `true` explicitly and retain their administrator-managed PAM policy. Helm changes to this setting roll the XGT pod. Verify that the intended token login succeeds and that `xgt.BasicAuth("xgtd", "")` is rejected; authentication and TLS are separate requirements.
 
@@ -963,7 +965,7 @@ and `MC_OIDC_*` configuration names for both integrations.
 
 To enable OIDC login, set `backend.env.XGT_AUTH_TYPES` and configure `xgt.extraConfig.security.oidc`. The backend discovers the issuer, client ID, and scopes from xGT when the issuer or client ID is unset. Supply confidential-client secrets and private CA certificates separately. Override the client ID when Mission Control has its own client; override `frontendUrl` only when the derived public URL is wrong.
 
-Set `xgt.auth.basic.enabled: false` to reject the container's independent PAM/basic login path. Choosing `XGT_AUTH_TYPES` changes Mission Control's login choices; it does not restrict direct Python connections. See [PAM and Basic Authentication Policy](#pam-and-basic-authentication-policy).
+Set `xgt.auth.pam.enabled: false` to reject the container's independent PAM/basic login path. Choosing `XGT_AUTH_TYPES` changes Mission Control's login choices; it does not restrict direct Python connections. See [PAM and Basic Authentication Policy](#pam-and-basic-authentication-policy).
 
 See the [OIDC configuration guide](../../doc/oidc_configuration.md) for how the redirect URI is derived, the full environment-variable reference, and the security allowlists (`MC_XGT_ALLOWED_HOSTS`, `MC_OIDC_ALLOWED_ORIGINS`) — that guide includes Kubernetes and OpenShift examples, such as the wildcard patterns needed for StatefulSet pod hostnames and cluster subdomains.
 
@@ -984,7 +986,7 @@ backend:
 
 xgt:
   auth:
-    basic:
+    pam:
       enabled: false
   extraConfig:
     security.oidc:
@@ -1025,7 +1027,7 @@ backend:
 
 xgt:
   auth:
-    basic:
+    pam:
       enabled: false
   extraConfig:
     security.oidc:
@@ -1297,7 +1299,7 @@ The Ingress routes to the frontend service on port 80. The ingress controller te
 | Parameter                   | Description                          | Default        |
 |-----------------------------|--------------------------------------|----------------|
 | `xgt.enabled`               | Deploy xGT as part of the release    | `true`         |
-| `xgt.auth.basic.enabled`   | `false`: block PAM/basic login; `true`: keep image PAM policy; `null`: block for OIDC/external configuration/custom startup or mounts, otherwise retain demo behavior | `null` |
+| `xgt.auth.pam.enabled`   | `false`: block all PAM-based login (password/LDAP, custom PKI, trusted proxy); `true`: keep image PAM policy; `null`: block for OIDC/external configuration/custom startup or mounts, otherwise retain demo behavior | `null` |
 | `xgt.hostname`              | Fixed container OS hostname for licensing; does not change the pod or Service name | `""` |
 | `xgt.oidc.caCert`           | Inline CA PEM for xGT OIDC HTTPS requests; creates an xGT CA Secret | `""` |
 | `xgt.oidc.caCertExistingSecret` | Existing xGT OIDC CA Secret; preferred over inline CA. Uses legacy backend CA settings if both xGT sources are empty | `""` |

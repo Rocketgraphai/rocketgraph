@@ -11,7 +11,7 @@ fips:
 
 xgt:
   auth:
-    basic:
+    pam:
       enabled: false  # Reject PAM/password login; authenticate with tokens.
   hostname: demo-xgt-test
   image:

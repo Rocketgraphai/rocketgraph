@@ -122,11 +122,11 @@ Backend OIDC CA cert secret name
 {{- end }}
 
 {{/* Preserve PAM only for explicit opt-in or the stock demo configuration. */}}
-{{- define "rocketgraph.xgtBasicAuthEnabled" -}}
+{{- define "rocketgraph.xgtPamAuthEnabled" -}}
 {{- $auth := .Values.xgt.auth | default dict -}}
-{{- $basic := $auth.basic | default dict -}}
-{{- if kindIs "bool" $basic.enabled -}}
-  {{- $basic.enabled -}}
+{{- $pam := $auth.pam | default dict -}}
+{{- if kindIs "bool" $pam.enabled -}}
+  {{- $pam.enabled -}}
 {{- else -}}
   {{- $config := .Values.xgt.extraConfig | default dict -}}
   {{- $oidc := get $config "security.oidc" | default dict -}}

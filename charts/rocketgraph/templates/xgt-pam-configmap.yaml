@@ -1,4 +1,4 @@
-{{- if and .Values.xgt.enabled (ne (include "rocketgraph.xgtBasicAuthEnabled" .) "true") }}
+{{- if and .Values.xgt.enabled (ne (include "rocketgraph.xgtPamAuthEnabled" .) "true") }}
 apiVersion: v1
 kind: ConfigMap
 metadata:

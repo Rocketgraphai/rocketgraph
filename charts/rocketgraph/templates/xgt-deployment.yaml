@@ -1,7 +1,7 @@
 {{- if .Values.xgt.enabled }}
 {{- $tlsKeys := include "rocketgraph.xgtTlsKeys" . | fromYaml }}
 {{- $oidcCa := include "rocketgraph.xgtOidcCa" . | fromYaml }}
-{{- $basicAuth := eq (include "rocketgraph.xgtBasicAuthEnabled" .) "true" }}
+{{- $pamAuth := eq (include "rocketgraph.xgtPamAuthEnabled" .) "true" }}
 {{- $restricted := and .Values.openshift.enabled (eq .Values.openshift.scc "restricted-v2") }}
 {{- $files := .Values.xgt.files.existingClaim }}
 {{- $direct := or $restricted $files }}
@@ -26,7 +26,7 @@ spec:
         app: xgt
         app.kubernetes.io/instance: {{ .Release.Name }}
       annotations:
-        {{- if not $basicAuth }}
+        {{- if not $pamAuth }}
         checksum/pam: {{ include (print $.Template.BasePath "/xgt-pam-configmap.yaml") . | sha256sum }}
         {{- end }}
         {{- if not (or $files .Values.xgt.config.existingConfigMap) }}
@@ -190,7 +190,7 @@ spec:
               subPath: {{ $oidcCa.key | quote }}
               readOnly: true
             {{- end }}
-            {{- if not $basicAuth }}
+            {{- if not $pamAuth }}
             - name: xgt-pam
               mountPath: /etc/pam.d/xgtd
               subPath: xgtd
@@ -213,7 +213,7 @@ spec:
       {{- end }}
       restartPolicy: Always
       volumes:
-        {{- if not $basicAuth }}
+        {{- if not $pamAuth }}
         - name: xgt-pam
           configMap:
             name: {{ include "rocketgraph.fullname.xgt" . }}-pam

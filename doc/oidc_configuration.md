@@ -27,7 +27,7 @@ specifically to the built-in OAuth server and `openshift_userapi` validation.
 
 ## Overview
 
-XGT's PAM/basic authentication path is independent of OIDC. Standard container images use `pam_permit.so`, which accepts arbitrary credentials. Selecting `OidcAuth` in Mission Control does not prevent a direct Python client from attempting basic login. For Helm token deployments, set `xgt.auth.basic.enabled: false` to mount a rejecting PAM policy; this works with chart-generated configuration, existing ConfigMaps, and files PVCs. For Compose, Podman, or another deployment mechanism, provision a rejecting `/etc/pam.d/xgtd` policy separately. See [PAM and Basic Authentication Policy](../charts/rocketgraph/README.md#pam-and-basic-authentication-policy).
+XGT's PAM/basic authentication path is independent of OIDC. Standard container images use `pam_permit.so`, which accepts arbitrary credentials. Selecting `OidcAuth` in Mission Control does not prevent a direct Python client from attempting basic login. For Helm token deployments, set `xgt.auth.pam.enabled: false` to mount a rejecting PAM policy; this works with chart-generated configuration, existing ConfigMaps, and files PVCs. For Compose, Podman, or another deployment mechanism, provision a rejecting `/etc/pam.d/xgtd` policy separately. See [PAM and Basic Authentication Policy](../charts/rocketgraph/README.md#pam-and-basic-authentication-policy).
 
 With `OidcAuth` enabled, Mission Control performs the OAuth2 authorization-code
 flow on behalf of the user. The browser returns to its backend with a temporary

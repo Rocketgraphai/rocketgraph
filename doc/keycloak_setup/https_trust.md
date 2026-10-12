@@ -57,7 +57,7 @@ Download [keycloak_ca_values.yaml](examples/keycloak_ca_values.yaml) or save thi
 # This mounts the public CA bundle in xGT and the Mission Control backend.
 xgt:
   auth:
-    basic:
+    pam:
       enabled: false
   oidc:
     caCertExistingSecret: keycloak-ca
@@ -116,7 +116,7 @@ Download [openshift_ca_values.yaml](examples/openshift_ca_values.yaml) and apply
 # Existing config/PVC: remove extraConfig and edit ca_cert in the mounted file.
 xgt:
   auth:
-    basic:
+    pam:
       enabled: false
   oidc:
     caCert: ""

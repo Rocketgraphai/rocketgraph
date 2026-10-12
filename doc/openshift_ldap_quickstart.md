@@ -47,7 +47,7 @@ Merge these settings into the deployment's Helm values and apply them using the 
 ``` yaml
 xgt:
   auth:
-    basic:
+    pam:
       enabled: false  # Require token authentication instead of permissive PAM.
   hostname: demo-xgt-test  # Replace with your licensed hostname.
   image:

@@ -175,7 +175,7 @@ Download [keycloak_values.yaml](examples/keycloak_values.yaml) and merge it into
 # if xgt.config.existingConfigMap or a files PVC supplies the configuration.
 xgt:
   auth:
-    basic:
+    pam:
       enabled: false  # Reject the independent PAM/password login path.
   config:
     # Reuse your existing groups and labels; these names are examples.
@@ -214,7 +214,7 @@ helm upgrade YOUR_RELEASE ../../charts/rocketgraph -n YOUR_NAMESPACE \
 
 If an existing ConfigMap or files PVC supplies `xgtd.conf`, update its OIDC configuration and CSV files directly instead of using this overlay. The chart rejects `xgt.extraConfig` and inline CSV settings alongside external configuration. For a hostname-bound license, retain `xgt.hostname` with a hostname covered by the license; no custom StatefulSet is needed.
 
-Keep `xgt.auth.basic.enabled: false` in the deployment values even with mounted configuration. This mounts a read-only PAM policy that rejects basic login. The standard container's `pam_permit.so` accepts arbitrary credentials; configuring Keycloak or hiding basic login in Mission Control does not disable that server path. For a non-Helm deployment, have the administrator replace `/etc/pam.d/xgtd` with a rejecting PAM policy when token authentication is required. After deploying, confirm token login works and a basic login such as `xgt.BasicAuth("xgtd", "")` fails.
+Keep `xgt.auth.pam.enabled: false` in the deployment values even with mounted configuration. This mounts a read-only PAM policy that rejects basic login. The standard container's `pam_permit.so` accepts arbitrary credentials; configuring Keycloak or hiding basic login in Mission Control does not disable that server path. For a non-Helm deployment, have the administrator replace `/etc/pam.d/xgtd` with a rejecting PAM policy when token authentication is required. After deploying, confirm token login works and a basic login such as `xgt.BasicAuth("xgtd", "")` fails.
 
 For OpenShift's non-root profile, retain `openshift.enabled: true` and `openshift.scc: restricted-v2`. Select FIPS images with `fips.enabled: true` and keep image tags without a `-fips` suffix; the chart appends it. Mission Control currently requires FIPS images for this profile. Configure each connection's TLS separately. Image selection alone does not establish FIPS compliance, and existing PVC contents must be writable by the admitted UID and volume group. See the chart's restricted-v2 and FIPS sections for deployment requirements; these authentication settings do not replace them.
 

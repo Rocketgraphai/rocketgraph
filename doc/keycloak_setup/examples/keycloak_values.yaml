@@ -3,7 +3,7 @@
 # if xgt.config.existingConfigMap or a files PVC supplies the configuration.
 xgt:
   auth:
-    basic:
+    pam:
       enabled: false  # Reject the independent PAM/password login path.
   config:
     # Reuse your existing groups and labels; these names are examples.

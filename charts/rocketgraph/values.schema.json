@@ -1801,9 +1801,9 @@
         "auth": {
           "type": "object",
           "additionalProperties": false,
-          "description": "Control the independent PAM/basic authentication path",
+          "description": "Control all authentication paths that use the xGT PAM policy, including basic/password, LDAP/SSSD, custom PKI, and trusted-proxy authentication",
           "properties": {
-            "basic": {
+            "pam": {
               "type": "object",
               "additionalProperties": false,
               "properties": {

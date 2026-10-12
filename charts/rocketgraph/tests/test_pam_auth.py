@@ -44,7 +44,7 @@ class PamAuthTests(unittest.TestCase):
         self.assert_pam_denied({"xgt": values})
 
   def test_explicit_false_and_restricted_profile_mount_deny_policy(self):
-    values = {"xgt": {"auth": {"basic": {"enabled": False}}}}
+    values = {"xgt": {"auth": {"pam": {"enabled": False}}}}
     self.assert_pam_denied(values)
     values.update({"openshift": {"enabled": True, "scc": "restricted-v2"},
                    "fips": {"enabled": True}})
@@ -54,7 +54,7 @@ class PamAuthTests(unittest.TestCase):
   def test_default_and_explicit_opt_in_keep_image_pam_configuration(self):
     for values in [{}, {"xgt": {
       "extraConfig": {"security.oidc": {"issuer": "https://idp.example.com"}},
-      "auth": {"basic": {"enabled": True}}
+      "auth": {"pam": {"enabled": True}}
     }}]:
       with self.subTest(values = values):
         objects = render(values)
@@ -69,21 +69,21 @@ class PamAuthTests(unittest.TestCase):
   def test_disabled_xgt_omits_pam_resources(self):
     objects = render({"missionControl": {"enabled": False},
                       "xgt": {"enabled": False,
-                              "auth": {"basic": {"enabled": False}}}})
+                              "auth": {"pam": {"enabled": False}}}})
     self.assertFalse(any("xgtd" in obj.get("data", {}) for obj in objects
                          if obj["kind"] == "ConfigMap"))
 
   def test_pam_denial_rejects_sssd_ldap_configuration(self):
     message = render({"xgt": {
-      "auth": {"basic": {"enabled": False}},
+      "auth": {"pam": {"enabled": False}},
       "ldap": {"enabled": True, "uri": "ldaps://ldap.example.com",
                "baseDn": "dc=example,dc=com"}
     }}, fails = True)
-    self.assertIn("xgt.auth.basic.enabled=true", message)
+    self.assertIn("xgt.auth.pam.enabled=true", message)
 
   def test_existing_ldap_configuration_can_explicitly_enable_pam(self):
     objects = render({"xgt": {
-      "auth": {"basic": {"enabled": True}},
+      "auth": {"pam": {"enabled": True}},
       "config": {"existingConfigMap": "company-config"},
       "ldap": {"enabled": True, "uri": "ldaps://ldap.example.com",
                "baseDn": "dc=example,dc=com"}
@@ -95,7 +95,7 @@ class PamAuthTests(unittest.TestCase):
     for path in ["/", "/etc", "/etc/pam.d", "/etc/pam.d/xgtd"]:
       with self.subTest(path = path):
         message = render({"xgt": {
-          "auth": {"basic": {"enabled": False}},
+          "auth": {"pam": {"enabled": False}},
           "extraVolumes": [{"name": "custom", "emptyDir": {}}],
           "extraVolumeMounts": [{"name": "custom", "mountPath": path}]
         }}, fails = True)
@@ -103,6 +103,12 @@ class PamAuthTests(unittest.TestCase):
 
   def test_string_boolean_is_rejected(self):
     message = render({"xgt": {
-      "auth": {"basic": {"enabled": "false"}}
+      "auth": {"pam": {"enabled": "false"}}
     }}, fails = True)
     self.assertIn("enabled", message)
+
+  def test_obsolete_basic_setting_is_rejected(self):
+    message = render({"xgt": {
+      "auth": {"basic": {"enabled": False}}
+    }}, fails = True)
+    self.assertIn("basic", message)
