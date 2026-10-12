@@ -839,6 +839,8 @@ The setting is named `pam` because the rejecting policy applies to every PAM-bas
 
 Set `xgt.auth.pam.enabled: true` only when PAM authentication is intended and its configuration has been reviewed. This keeps the image's PAM policy; it does **not** make that policy secure. For direct LDAP, `xgt.ldap.enabled` starts the image's SSSD integration and changes PAM to `pam_sss.so`; it requires PAM to remain enabled. When reusing host SSSD, supply the appropriate PAM configuration as well as the sockets. If both OIDC and PAM are intentionally allowed, explicitly set `true` and ensure PAM validates credentials instead of using `pam_permit.so`.
 
+With explicit PAM opt-in, an administrator-managed policy can use an extra volume named `xgt-pam`; the chart reserves that name only when it mounts its own rejecting policy. With PAM blocked, extra mounts cannot replace `/etc/pam.d/xgtd` or a parent directory. Mount paths are normalized for collision checks, so alternate spellings such as `/etc//pam.d` do not bypass the restriction.
+
 Upgrading from an earlier chart can block PAM for deployments using external configuration or custom startup/mounts. Token deployments should keep the restriction. Existing PAM/SSSD deployments must set `true` explicitly and retain their administrator-managed PAM policy. Helm changes to this setting roll the XGT pod. Verify that the intended token login succeeds and that `xgt.BasicAuth("xgtd", "")` is rejected; authentication and TLS are separate requirements.
 
 ### LDAP Authentication

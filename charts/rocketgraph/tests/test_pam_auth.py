@@ -101,6 +101,48 @@ class PamAuthTests(unittest.TestCase):
         }}, fails = True)
         self.assertIn("PAM", message)
 
+  def test_equivalent_pam_mount_paths_are_rejected(self):
+    for path in ["//", "/etc/", "/etc//pam.d", "/etc/pam.d/.",
+                 "/etc/pam.d/xgtd/.", "/etc/ssh/../pam.d",
+                 "/etc/pam.d/../.."]:
+      with self.subTest(path = path):
+        message = render({"xgt": {
+          "extraVolumes": [{"name": "custom", "emptyDir": {}}],
+          "extraVolumeMounts": [{"name": "custom", "mountPath": path}]
+        }}, fails = True)
+        self.assertIn("PAM", message)
+
+  def test_administrator_pam_volume_name_is_allowed_only_with_opt_in(self):
+    values = {"xgt": {
+      "auth": {"pam": {"enabled": True}},
+      "extraVolumes": [{"name": "xgt-pam",
+                        "configMap": {"name": "company-pam"}}],
+      "extraVolumeMounts": [{"name": "xgt-pam",
+                             "mountPath": "/etc/pam.d/xgtd",
+                             "subPath": "xgtd", "readOnly": True}]
+    }}
+    objects = render(values)
+    pod = component(objects, "Deployment", "xgt")["spec"]["template"]
+    volumes = [volume for volume in pod["spec"]["volumes"]
+               if volume["name"] == "xgt-pam"]
+    self.assertEqual(volumes, values["xgt"]["extraVolumes"])
+    self.assertNotIn("checksum/pam", pod["metadata"]["annotations"])
+    self.assertFalse(any("xgtd" in obj.get("data", {}) for obj in objects
+                         if obj["kind"] == "ConfigMap"))
+    for enabled in [False, None]:
+      values["xgt"]["auth"]["pam"]["enabled"] = enabled
+      self.assertIn("volume names", render(values, fails = True))
+
+  def test_equivalent_custom_mount_paths_cannot_collide(self):
+    message = render({"xgt": {
+      "extraVolumes": [{"name": "custom", "emptyDir": {}}],
+      "extraVolumeMounts": [
+        {"name": "custom", "mountPath": "/custom/config"},
+        {"name": "custom", "mountPath": "/custom//config/."}
+      ]
+    }}, fails = True)
+    self.assertIn("unique mount paths", message)
+
   def test_string_boolean_is_rejected(self):
     message = render({"xgt": {
       "auth": {"pam": {"enabled": "false"}}
