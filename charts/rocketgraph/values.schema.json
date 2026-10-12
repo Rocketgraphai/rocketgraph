@@ -1797,6 +1797,27 @@
               }
             }
           }
+        },
+        "auth": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Control all authentication paths that use the xGT PAM policy, including basic/password, LDAP/SSSD, custom PKI, and trusted-proxy authentication",
+          "properties": {
+            "pam": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "enabled": {
+                  "type": [
+                    "boolean",
+                    "null"
+                  ],
+                  "default": true,
+                  "description": "Only explicit false blocks PAM. true (default), null, or an omitted setting keeps the image/admin PAM policy, regardless of OIDC, external configuration, or custom startup/mounts."
+                }
+              }
+            }
+          }
         }
       }
     },

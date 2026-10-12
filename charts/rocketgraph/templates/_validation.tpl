@@ -53,6 +53,10 @@ Call via: {{- include "rocketgraph.validate" . }}
 {{- end }}
 
 {{- if .Values.xgt.enabled }}
+{{- $pamAuth := eq (include "rocketgraph.xgtPamAuthEnabled" .) "true" }}
+{{- if and (not $pamAuth) .Values.xgt.ldap.enabled }}
+  {{- fail "PAM/SSSD LDAP requires xgt.auth.pam.enabled=true; disable xgt.ldap.enabled for token-only authentication" }}
+{{- end }}
 {{- if .Values.xgt.files.existingClaim }}
   {{- if or .Values.xgt.config.existingConfigMap .Values.xgt.config.grouplabelCsv .Values.xgt.config.labelCsv .Values.xgt.config.proxyList .Values.xgt.extraConfig }}
     {{- fail "xgt.files.existingClaim uses configuration files on the PVC; remove xgt.config overrides and xgt.extraConfig and edit the PVC files instead" }}
@@ -68,6 +72,7 @@ Call via: {{- include "rocketgraph.validate" . }}
   {{- fail "xgt.files.subPath requires xgt.files.existingClaim" }}
 {{- end }}
 {{- $volumeNames := list "xgt-config" "xgt-data" "xgt-log" "xgt-tls" "xgt-license" "sssd-config" "oidc-ca-cert" "xgt-files" }}
+{{- if not $pamAuth }}{{- $volumeNames = append $volumeNames "xgt-pam" }}{{- end }}
 {{- range .Values.xgt.extraVolumes }}
   {{- if or (not .name) (has .name $volumeNames) }}{{- fail "xgt.extraVolumes names must be unique and must not replace chart volume names" }}{{- end }}
   {{- $volumeNames = append $volumeNames .name }}
@@ -83,8 +88,12 @@ Call via: {{- include "rocketgraph.validate" . }}
   {{- if .Values.xgt.config.proxyList }}{{- $mountPaths = append $mountPaths "/conf/proxy_list" }}{{- end }}
 {{- end }}
 {{- range .Values.xgt.extraVolumeMounts }}
-  {{- if or (not .mountPath) (has .mountPath $mountPaths) }}{{- fail "xgt.extraVolumeMounts must use unique mount paths and must not replace chart mounts" }}{{- end }}
-  {{- $mountPaths = append $mountPaths .mountPath }}
+  {{- $mountPath := clean (.mountPath | default "") }}
+  {{- if and (not $pamAuth) (has $mountPath (list "/" "/etc" "/etc/pam.d" "/etc/pam.d/xgtd")) }}
+    {{- fail "xgt.extraVolumeMounts must not replace /etc/pam.d/xgtd or a parent directory when PAM authentication is blocked" }}
+  {{- end }}
+  {{- if or (not .mountPath) (has $mountPath $mountPaths) }}{{- fail "xgt.extraVolumeMounts must use unique mount paths and must not replace chart mounts" }}{{- end }}
+  {{- $mountPaths = append $mountPaths $mountPath }}
 {{- end }}
 {{- end }}
 

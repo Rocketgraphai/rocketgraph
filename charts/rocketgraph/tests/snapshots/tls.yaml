@@ -5,7 +5,7 @@ kind: NetworkPolicy
 metadata:
   name: test-release-frontend
   labels:
-    helm.sh/chart: rocketgraph-0.5.0
+    helm.sh/chart: rocketgraph-0.5.1
     app.kubernetes.io/name: rocketgraph
     app.kubernetes.io/version: "2.7.0"
     app.kubernetes.io/managed-by: Helm
@@ -31,7 +31,7 @@ kind: NetworkPolicy
 metadata:
   name: test-release-backend
   labels:
-    helm.sh/chart: rocketgraph-0.5.0
+    helm.sh/chart: rocketgraph-0.5.1
     app.kubernetes.io/name: rocketgraph
     app.kubernetes.io/version: "2.7.0"
     app.kubernetes.io/managed-by: Helm
@@ -60,7 +60,7 @@ kind: NetworkPolicy
 metadata:
   name: test-release-xgt
   labels:
-    helm.sh/chart: rocketgraph-0.5.0
+    helm.sh/chart: rocketgraph-0.5.1
     app.kubernetes.io/name: rocketgraph
     app.kubernetes.io/version: "2.7.0"
     app.kubernetes.io/managed-by: Helm
@@ -84,7 +84,7 @@ kind: NetworkPolicy
 metadata:
   name: test-release-mongodb
   labels:
-    helm.sh/chart: rocketgraph-0.5.0
+    helm.sh/chart: rocketgraph-0.5.1
     app.kubernetes.io/name: rocketgraph
     app.kubernetes.io/version: "2.7.0"
     app.kubernetes.io/managed-by: Helm
@@ -121,7 +121,7 @@ metadata:
   name: test-release-backend-tls
   labels:
     app: backend
-    helm.sh/chart: rocketgraph-0.5.0
+    helm.sh/chart: rocketgraph-0.5.1
     app.kubernetes.io/name: rocketgraph
     app.kubernetes.io/version: "2.7.0"
     app.kubernetes.io/managed-by: Helm
@@ -140,7 +140,7 @@ metadata:
   name: test-release-frontend-tls
   labels:
     app: frontend
-    helm.sh/chart: rocketgraph-0.5.0
+    helm.sh/chart: rocketgraph-0.5.1
     app.kubernetes.io/name: rocketgraph
     app.kubernetes.io/version: "2.7.0"
     app.kubernetes.io/managed-by: Helm
@@ -158,7 +158,7 @@ metadata:
   name: test-release-xgt-tls
   labels:
     app: xgt
-    helm.sh/chart: rocketgraph-0.5.0
+    helm.sh/chart: rocketgraph-0.5.1
     app.kubernetes.io/name: rocketgraph
     app.kubernetes.io/version: "2.7.0"
     app.kubernetes.io/managed-by: Helm
@@ -176,7 +176,7 @@ metadata:
   name: test-release-xgt-config
   labels:
     app: xgt
-    helm.sh/chart: rocketgraph-0.5.0
+    helm.sh/chart: rocketgraph-0.5.1
     app.kubernetes.io/name: rocketgraph
     app.kubernetes.io/version: "2.7.0"
     app.kubernetes.io/managed-by: Helm
@@ -232,7 +232,7 @@ metadata:
   name: test-release-mongodb-data
   labels:
     app: mongodb
-    helm.sh/chart: rocketgraph-0.5.0
+    helm.sh/chart: rocketgraph-0.5.1
     app.kubernetes.io/name: rocketgraph
     app.kubernetes.io/version: "2.7.0"
     app.kubernetes.io/managed-by: Helm
@@ -252,7 +252,7 @@ metadata:
   name: test-release-xgt-data
   labels:
     app: xgt
-    helm.sh/chart: rocketgraph-0.5.0
+    helm.sh/chart: rocketgraph-0.5.1
     app.kubernetes.io/name: rocketgraph
     app.kubernetes.io/version: "2.7.0"
     app.kubernetes.io/managed-by: Helm
@@ -272,7 +272,7 @@ metadata:
   name: test-release-xgt-log
   labels:
     app: xgt
-    helm.sh/chart: rocketgraph-0.5.0
+    helm.sh/chart: rocketgraph-0.5.1
     app.kubernetes.io/name: rocketgraph
     app.kubernetes.io/version: "2.7.0"
     app.kubernetes.io/managed-by: Helm
@@ -292,7 +292,7 @@ metadata:
   name: test-release-backend
   labels:
     app: backend
-    helm.sh/chart: rocketgraph-0.5.0
+    helm.sh/chart: rocketgraph-0.5.1
     app.kubernetes.io/name: rocketgraph
     app.kubernetes.io/version: "2.7.0"
     app.kubernetes.io/managed-by: Helm
@@ -316,7 +316,7 @@ metadata:
   name: test-release-frontend
   labels:
     app: frontend
-    helm.sh/chart: rocketgraph-0.5.0
+    helm.sh/chart: rocketgraph-0.5.1
     app.kubernetes.io/name: rocketgraph
     app.kubernetes.io/version: "2.7.0"
     app.kubernetes.io/managed-by: Helm
@@ -342,7 +342,7 @@ metadata:
   name: test-release-mongodb
   labels:
     app: mongodb
-    helm.sh/chart: rocketgraph-0.5.0
+    helm.sh/chart: rocketgraph-0.5.1
     app.kubernetes.io/name: rocketgraph
     app.kubernetes.io/version: "2.7.0"
     app.kubernetes.io/managed-by: Helm
@@ -365,7 +365,7 @@ metadata:
   name: test-release-xgt
   labels:
     app: xgt
-    helm.sh/chart: rocketgraph-0.5.0
+    helm.sh/chart: rocketgraph-0.5.1
     app.kubernetes.io/name: rocketgraph
     app.kubernetes.io/version: "2.7.0"
     app.kubernetes.io/managed-by: Helm
@@ -389,7 +389,7 @@ metadata:
   name: test-release-backend
   labels:
     app: backend
-    helm.sh/chart: rocketgraph-0.5.0
+    helm.sh/chart: rocketgraph-0.5.1
     app.kubernetes.io/name: rocketgraph
     app.kubernetes.io/version: "2.7.0"
     app.kubernetes.io/managed-by: Helm
@@ -477,7 +477,7 @@ metadata:
   name: test-release-frontend
   labels:
     app: frontend
-    helm.sh/chart: rocketgraph-0.5.0
+    helm.sh/chart: rocketgraph-0.5.1
     app.kubernetes.io/name: rocketgraph
     app.kubernetes.io/version: "2.7.0"
     app.kubernetes.io/managed-by: Helm
@@ -550,7 +550,7 @@ metadata:
   name: test-release-mongodb
   labels:
     app: mongodb
-    helm.sh/chart: rocketgraph-0.5.0
+    helm.sh/chart: rocketgraph-0.5.1
     app.kubernetes.io/name: rocketgraph
     app.kubernetes.io/version: "2.7.0"
     app.kubernetes.io/managed-by: Helm
@@ -623,7 +623,7 @@ metadata:
   name: test-release-xgt
   labels:
     app: xgt
-    helm.sh/chart: rocketgraph-0.5.0
+    helm.sh/chart: rocketgraph-0.5.1
     app.kubernetes.io/name: rocketgraph
     app.kubernetes.io/version: "2.7.0"
     app.kubernetes.io/managed-by: Helm
@@ -642,7 +642,7 @@ spec:
         app: xgt
         app.kubernetes.io/instance: test-release
       annotations:
-        checksum/config: 88defb4f4b330c19a46db120505f0571ba990747fd409f023571c04c655a4cd1
+        checksum/config: b3c8fdabafd45af7b3f4fde1df3ef1bacf853be77698f7c24ede5421b454ab62
     spec:
       containers:
         - name: xgt

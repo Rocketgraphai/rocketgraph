@@ -161,6 +161,7 @@ class TlsSecretTests(unittest.TestCase):
     def test_existing_configmap_is_not_replaced_and_disabled_components_ignore_tls(self):
         values = self.values({})
         values['xgt']['config'] = {'existingConfigMap': 'existing'}
+        values['xgt']['auth'] = {'pam': {'enabled': True}}
         values['xgt']['ssl'] = {'enabled': True, 'existingSecret': 'serving',
             'secretKeys': {'cert': 'tls.crt', 'key': 'tls.key'}}
         values['missionControl'] = {'enabled': False}

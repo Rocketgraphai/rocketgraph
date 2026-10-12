@@ -121,6 +121,17 @@ Backend OIDC CA cert secret name
 {{- .Values.backend.oidc.caCertExistingSecret | default (printf "%s-backend-oidc-ca" .Release.Name) }}
 {{- end }}
 
+{{/* Only an explicit false installs the chart's rejecting PAM policy. */}}
+{{- define "rocketgraph.xgtPamAuthEnabled" -}}
+{{- $auth := .Values.xgt.auth | default dict -}}
+{{- $pam := $auth.pam | default dict -}}
+{{- if kindIs "bool" $pam.enabled -}}
+  {{- $pam.enabled -}}
+{{- else -}}
+  true
+{{- end -}}
+{{- end -}}
+
 {{/* xGT owns its OIDC CA; backend settings remain a legacy fallback. */}}
 {{- define "rocketgraph.xgtOidcCa" -}}
 {{- $oidc := .Values.xgt.oidc | default dict -}}

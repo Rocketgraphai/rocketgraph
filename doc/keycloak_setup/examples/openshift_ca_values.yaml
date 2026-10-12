@@ -2,6 +2,9 @@
 # Apply after the deployment values and keycloak_values.yaml.
 # Existing config/PVC: remove extraConfig and edit ca_cert in the mounted file.
 xgt:
+  auth:
+    pam:
+      enabled: false
   oidc:
     caCert: ""
     caCertExistingSecret: ""

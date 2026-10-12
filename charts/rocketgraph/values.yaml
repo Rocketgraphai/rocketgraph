@@ -244,6 +244,13 @@ mongodb:
 
 xgt:
   enabled: true  # Set to false to use an external xGT server
+  auth:
+    pam:
+      # false: mount pam_deny.so, blocking password/LDAP, custom PKI and
+      # trusted-proxy login. true (default) or null: keep the image/admin
+      # PAM policy. OIDC, external config and custom mounts do not change it.
+      # Standard images use pam_permit.so unless PAM has been configured.
+      enabled: true
   # Stable OS hostname for hostname-bound licenses; pod metadata.name still varies.
   hostname: ""
   # Use one pre-populated PVC for conf/, license/, data/, log/.

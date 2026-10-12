@@ -1,4 +1,4 @@
-# Requires chart 0.4.0 or later.
+# Requires chart 0.5.1 or later.
 # Full test stack. Additional releases can disable Mission Control and MongoDB.
 # Keep image tags unsuffixed; Helm adds -fips.
 openshift:
@@ -7,6 +7,9 @@ openshift:
 fips:
   enabled: true
 xgt:
+  auth:
+    pam:
+      enabled: false  # Reject PAM/password login; authenticate with tokens.
   enabled: true
   hostname: demo-xgt-test
   image:
@@ -19,7 +22,6 @@ xgt:
   config:
     grouplabelCsv: |
       group,label
-      xgtd,xgtadmin
       xgt-admins,xgtadmin
       xgt-users,data-users
       system:serviceaccounts:xgt-demo-jobs,automation

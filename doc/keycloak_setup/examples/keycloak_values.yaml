@@ -2,12 +2,14 @@
 # images, storage and TLS settings. Update existing mounted config files instead
 # if xgt.config.existingConfigMap or a files PVC supplies the configuration.
 xgt:
+  auth:
+    pam:
+      enabled: false  # Reject the independent PAM/password login path.
   config:
     # Reuse your existing groups and labels; these names are examples.
     # The rocketgraph-automation group and automation label are optional.
     grouplabelCsv: |
       group,label
-      xgtd,xgtadmin
       rocketgraph-ldap-admins,xgtadmin
       rocketgraph-ldap-users,data-users
       rocketgraph-automation,automation
